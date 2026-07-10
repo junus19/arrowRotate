@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8f5a503b788f46818ee9b9599ed022e, type: 3}
+  m_Name: starter_pack
+  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.Store.ShopItemDefinition
+  _id: starter_pack
+  _category: 
+  _label: STARTER PACK
+  _icon: {fileID: 21300000, guid: cf2b886fc0d454a39abe208f536ba47a, type: 3}
+  _description: 
+  _currency: 2
+  _price: 0
+  _maxPurchases: -1
+  _isConsumable: 1
+  _layout: 1
+  _priceLabelOverride: EUR 10,99
+  _badge: 0
+  _badgeCustomText: 
+  _bonusLabel: 70% EXTRA
+  _offerDurationSeconds: 84180
+  _rewards:
+  - rid: 1226833427480707236
+  - rid: 1226833427480707237
+  - rid: 1226833427480707238
+  - rid: 1226833427480707239
+  references:
+    version: 2
+    RefIds:
+    - rid: 1226833427480707236
+      type: {class: CurrencyReward, ns: GameBrain.Store, asm: Assembly-CSharp}
+      data:
+        _currency: 0
+        _amount: 1000
+    - rid: 1226833427480707237
+      type: {class: BoosterReward, ns: GameBrain.Store, asm: Assembly-CSharp}
+      data:
+        _boosterType: 1
+        _amount: 2
+    - rid: 1226833427480707238
+      type: {class: BoosterReward, ns: GameBrain.Store, asm: Assembly-CSharp}
+      data:
+        _boosterType: 3
+        _amount: 8
+    - rid: 1226833427480707239
+      type: {class: BoosterReward, ns: GameBrain.Store, asm: Assembly-CSharp}
+      data:
+        _boosterType: 2
+        _amount: 3

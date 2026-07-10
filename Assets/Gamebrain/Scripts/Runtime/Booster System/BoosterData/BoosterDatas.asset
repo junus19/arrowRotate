@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 733c20bfdd3b74e1283ff4c6b55082db, type: 3}
+  m_Name: BoosterDatas
+  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.BoosterData
+  BoosterDatas:
+  - {fileID: 11400000, guid: d5f5c8ffdd8d54e5ba2492fcc26ecd5c, type: 2}
+  - {fileID: 11400000, guid: b341ed78a7b5c43b09903256db61e79b, type: 2}
+  - {fileID: 11400000, guid: f86cd2962fe1c4b169228f89960caed0, type: 2}

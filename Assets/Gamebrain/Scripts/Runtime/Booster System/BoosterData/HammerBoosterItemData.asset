@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11604a8c6765e48db84f653b9c8752d9, type: 3}
+  m_Name: HammerBoosterItemData
+  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.BoosterItemData
+  boosterType: 1
+  icon: {fileID: -236935989, guid: 658df338772d64c258c0401f955373ec, type: 3}
+  iconDisabled: {fileID: -2110546160, guid: 658df338772d64c258c0401f955373ec, type: 3}
+  boosterPrefab: {fileID: 3075071074501045275, guid: 98a2ddd1834ea47ea81e595a21ad3eca,
+    type: 3}
+  header: HAMMER
+  info: Tap any object to clear

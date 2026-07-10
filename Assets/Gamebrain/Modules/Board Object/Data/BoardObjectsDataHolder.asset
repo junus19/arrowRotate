@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8316754d440a46caad609d0d4164b84d, type: 3}
+  m_Name: BoardObjectsDataHolder
+  m_EditorClassIdentifier: Assembly-CSharp::GAME.Scripts.Game.BoardObjectsDataHolder
+  BoardObjectInfos:
+  - boardObjectType: 2
+    boardObjectPrefab: {fileID: 2778290940251927824, guid: 94e57b7ed76fa4d97b7a21a00b60f8d0, type: 3}
+  - boardObjectType: 3
+    boardObjectPrefab: {fileID: 1458537218926008118, guid: 42de4344ca7484e43be1efa254926fae, type: 3}
+  - boardObjectType: 4
+    boardObjectPrefab: {fileID: 1146647617915997328, guid: ba70457ba42344e35a10ebc0aa0e15d1, type: 3}
+  - boardObjectType: 5
+    boardObjectPrefab: {fileID: 4782098671546430410, guid: 43fd01aa2c29f4105a05316bff54b1f1, type: 3}
+  - boardObjectType: 6
+    boardObjectPrefab: {fileID: 4997871332929706712, guid: c8faa6b4171b6412c8514c17e79101e8, type: 3}
+  - boardObjectType: 1
+    boardObjectPrefab: {fileID: 1808895920754480026, guid: 6047b5e2f1c8f46f396e6d7af3c221ca, type: 3}

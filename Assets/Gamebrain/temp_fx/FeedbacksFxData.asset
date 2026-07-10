@@ -1,0 +1,87 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 800c96eb7a5da49339e702993ee6c341, type: 3}
+  m_Name: FeedbacksFxData
+  m_EditorClassIdentifier: 
+  EffectPresets:
+  - ClipType: 0
+    Clip: {fileID: 8300000, guid: 688a63550efe641fc94b665012a53396, type: 3}
+    Volume: 0.6
+    HasRandomPitch: 0
+    Pitch_Min: 0
+    Pitch_Max: 0
+    hapticPresetType: 5
+    androidHapticPreset: 0
+  - ClipType: 10
+    Clip: {fileID: 8300000, guid: 47f09b8281e2f2c4285bf8b5c7ddbe60, type: 3}
+    Volume: 0.1
+    HasRandomPitch: 0
+    Pitch_Min: 2
+    Pitch_Max: 2.5
+    hapticPresetType: 8
+    androidHapticPreset: 0
+  - ClipType: 20
+    Clip: {fileID: 8300000, guid: c7ff994a431bb1547af461969c794c7e, type: 3}
+    Volume: 0.1
+    HasRandomPitch: 1
+    Pitch_Min: 1.1
+    Pitch_Max: 1.1
+    hapticPresetType: 6
+    androidHapticPreset: 0
+  - ClipType: 100
+    Clip: {fileID: 8300000, guid: 769a1f2ada91a40ffb06a3e6851efe46, type: 3}
+    Volume: 0.4
+    HasRandomPitch: 1
+    Pitch_Min: 2
+    Pitch_Max: 2.4
+    hapticPresetType: 2
+    androidHapticPreset: 0
+  - ClipType: 30
+    Clip: {fileID: 8300000, guid: c12adee2fa0cc43b3ab070c1e26382fd, type: 3}
+    Volume: 0.1
+    HasRandomPitch: 0
+    Pitch_Min: 0
+    Pitch_Max: 0
+    hapticPresetType: 6
+    androidHapticPreset: 4
+  - ClipType: 200
+    Clip: {fileID: 8300000, guid: 9fe2eeb9be7104431bc96c44b216bcce, type: 3}
+    Volume: 0.3
+    HasRandomPitch: 0
+    Pitch_Min: 0
+    Pitch_Max: 0
+    hapticPresetType: 3
+    androidHapticPreset: 4
+  - ClipType: 224
+    Clip: {fileID: 8300000, guid: 6b1606567adba6a47beedbee59ceb4ea, type: 3}
+    Volume: 0.3
+    HasRandomPitch: 1
+    Pitch_Min: 0.88
+    Pitch_Max: 0.98
+    hapticPresetType: 6
+    androidHapticPreset: 4
+  - ClipType: 225
+    Clip: {fileID: 8300000, guid: d4733bd6193decc4183dba8c2864c146, type: 3}
+    Volume: 0.3
+    HasRandomPitch: 0
+    Pitch_Min: 1
+    Pitch_Max: 1
+    hapticPresetType: 2
+    androidHapticPreset: 4
+  - ClipType: 226
+    Clip: {fileID: 8300000, guid: d34dfffa4634751418a5e23852669350, type: 3}
+    Volume: 0.3
+    HasRandomPitch: 0
+    Pitch_Min: 1
+    Pitch_Max: 1.1
+    hapticPresetType: 5
+    androidHapticPreset: 4

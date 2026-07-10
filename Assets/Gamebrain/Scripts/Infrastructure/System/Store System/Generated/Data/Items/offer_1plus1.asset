@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8f5a503b788f46818ee9b9599ed022e, type: 3}
+  m_Name: offer_1plus1
+  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.Store.ShopItemDefinition
+  _id: offer_1plus1
+  _category: 
+  _label: 1+1 OFFER
+  _icon: {fileID: 0}
+  _description: 
+  _currency: 2
+  _price: 0
+  _maxPurchases: -1
+  _isConsumable: 1
+  _layout: 3
+  _priceLabelOverride: EUR 7,99
+  _badge: 0
+  _badgeCustomText: 
+  _bonusLabel: BUY 1, GET 1 FREE!
+  _offerDurationSeconds: 255600
+  _rewards:
+  - rid: 1226833427480707250
+  - rid: 1226833427480707251
+  - rid: 1226833427480707252
+  - rid: 1226833427480707253
+  references:
+    version: 2
+    RefIds:
+    - rid: 1226833427480707250
+      type: {class: BoosterReward, ns: GameBrain.Store, asm: Assembly-CSharp}
+      data:
+        _boosterType: 3
+        _amount: 3
+    - rid: 1226833427480707251
+      type: {class: BoosterReward, ns: GameBrain.Store, asm: Assembly-CSharp}
+      data:
+        _boosterType: 1
+        _amount: 3
+    - rid: 1226833427480707252
+      type: {class: BoosterReward, ns: GameBrain.Store, asm: Assembly-CSharp}
+      data:
+        _boosterType: 2
+        _amount: 3
+    - rid: 1226833427480707253
+      type: {class: CurrencyReward, ns: GameBrain.Store, asm: Assembly-CSharp}
+      data:
+        _currency: 0
+        _amount: 100

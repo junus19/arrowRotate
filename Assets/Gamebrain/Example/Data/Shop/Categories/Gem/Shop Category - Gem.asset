@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dccdd5905e164dcf8192e9cc8514f6a9, type: 3}
+  m_Name: Shop Category - Gem
+  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.ShopCategoryData
+  Id: 
+  Name: 
+  Icon: {fileID: 0}
+  Items:
+  - {fileID: 11400000, guid: 3c851f51b7bea4750907a41bf0b48b7c, type: 2}
+  - {fileID: 11400000, guid: 2616f037265d44040b03e3f71face18f, type: 2}
+  - {fileID: 11400000, guid: 767fd927a4afe43e3a78be60a56a983d, type: 2}
+  - {fileID: 11400000, guid: f4e86eef02ed34d419d5b8f41224a10d, type: 2}
+  - {fileID: 11400000, guid: 65fc197b4aef54c76901d99020e34703, type: 2}
+  - {fileID: 11400000, guid: 2464511c7f9a843a29fa2cc9450f7266, type: 2}
+  ViewPrefab: {fileID: 8594988840759727108, guid: 2c502e3c3100b45b7adf25b14a3b863e,
+    type: 3}

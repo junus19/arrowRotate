@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 736edcb4bd1d473eb2c5fa6a9e3f28f7, type: 3}
+  m_Name: AnalyticsConfig
+  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.SDK.AnalyticsConfig
+  FacebookEnabled: 0
+  FacebookAppName: 
+  FacebookAppId: 
+  FacebookClientToken: 
+  ApplovinEnabled: 0
+  ApplovinSdkKey: 5G2ZhfKdfVwh7-HzvMz-LzwDwddWi_PpFRMy5hamBVSITkGN4DLQBGe6vGdcF1PVTnRZT1JfWmz-UDLZQh-czd
+  AdReviewEnabled: 1
+  PrivacyFlowEnabled: 1
+  PrivacyFlowEnabledInGDPR: 0
+  PrivacyTermsURL: https://gamebra.in/hyper/policy/
+  AndroidInterstitialAdUnitId: 
+  AndroidRewardedAdUnitId: 
+  AndroidBannerAdUnitId: 
+  IosInterstitialAdUnitId: 
+  IosRewardedAdUnitId: 
+  IosBannerAdUnitId: 
+  GameAnalyticsEnabled: 0
+  GameAnalyticsAndroidGameKey: 
+  GameAnalyticsAndroidSecretKey: 
+  GameAnalyticsIosGameKey: 
+  GameAnalyticsIosSecretKey: 
+  GameAnalyticsBuild: 0
+  GameAnalyticsBuildVersion: 0.1.0
+  GameAnalyticsAndroidBuildVersion: 0.1.0
+  AdjustEnabled: 0
+  AdjustAppToken: 
+  AdjustEnvironment: 1
+  AdjustFirstLaunchEventToken: 
+  AdjustTutorialStartEventToken: 
+  AdjustTutorialCompleteEventToken: 
+  AdjustPurchaseEventToken: 
+  AdjustLevelStartEventTokens: []
+  AdjustLevelCompleteEventTokens: []
+  AdjustLevelFailEventTokens: []
+  FirebaseEnabled: 0
+  FirebaseAndroidConfigPath: 
+  FirebaseIOSConfigPath: 
+  HammerEnabled: 0
+  InternetRequired: 0
+  EnableInEditor: 0
+  VerboseLogging: 0
+  AutoSave: 0
+  AdsEnabled: 1
+  InterstitialEnabled: 0
+  RewardedEnabled: 1
+  BannerEnabled: 0
+  GlobalAdConditions: []
+  AdPresets: []
