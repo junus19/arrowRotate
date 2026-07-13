@@ -160,12 +160,14 @@ Ses/haptik: yalnızca `FxRequestEvent` (Rotate / Connect / Launch / Bounce / Ice
 - **Milestone B: oyun döngüsü tamam ✅**
 - Not: Main menü anında gameplay'e geçiyor (template davranışı) ve Win panel içeriği placeholder — ikisi de Faz 7 HUD/panel işine girer. Kalan: `HexaGameplayPanel` (süre/hamle/ok çipleri).
 
-### Faz 7 — İçerik + meta (2–3 gün)
-- [ ] Editor penceresi: seed gezgini (config + seed → önizleme, zorluk istatistikleri: edge sayısı, ok sayısı), toplu doğrulama, beğenilen seed'leri asset'e kaydetme. İlk paket: 100+ level (zorluk tablosuna göre eğri).
-- [ ] Tutorial: level 1–2'de tap eli + kısıtlı serbestlik (arrowJam TutorialHand deseni tap'e uyarlanır).
-- [ ] Fail koşulu kararına göre: süre limiti + revive (rewarded ile uzatma) — **açık soru, prototipte fail yok**.
-- [ ] Ekonomi: level sonu coin (CurrencyManager), ayarlar, haptik/ses anahtarları (FeedbackManager).
-- [ ] Tema sistemi (arka plan/taş paleti varyasyonları) — arrowJam ThemeData deseni.
+### Faz 7 — İçerik + meta ✅ (2026-07-13)
+- [x] `HexaHudPanel` (GUI sahnesi, salt EventBus abonesi): ⏱ süre (ilk hamlede başlar, m:ss) · ok başına palet-renkli çip (buzlu: kalan eşik sayısı, çıkan: soluk) · hamle sayacı. `HexaLevelStartedEvent` çip verisi (`HexaArrowChipInfo[]`) taşıyacak şekilde genişletildi. Runtime üretilen sprite'lar (asset bağımlılığı yok).
+- [x] Tutorial: level 1'de yalnız ilk ok döndürülebilir + head hücresinde pulse halkası; ok bağlanınca kısıt kalkar. Canlı testte doğrulandı (kısıtlı tap sayılmadı, bağlanınca serbest kaldı).
+- [x] Fail koşulu: v1'de YOK (yürütme kararı — prototiple aynı; revive/süre limiti gerekirse Faz 8+).
+- [x] Ekonomi: level sonu +25 coin (`HexaGameManager` → `CurrencyManager.AddCoin`, canlı testte coin=25 doğrulandı). Ses anahtarları: dönüş=Drag, çıkış=RocketLaunch, engel=InvalidDrop, buz=Ice_1, win=LevelComplete (klip atamaları Feedbacks_SO içerik işi).
+- [x] **Seed Browser** editor penceresi (`Arrow Rotate ▸ Seed Browser`): zorluk+seed aralığı tarama, istatistik (ok/hücre/engel/buz) + geçerlilik, mini önizleme, seçileni bake, klasörü Config'e atama.
+- [x] İlk içerik paketi: 50 level (zorluk eğrisi 1→2→3×4→5×44, test edilmiş seed uzayından) Config'e atandı. Küratörlük/ayıklama Seed Browser ile yapılabilir.
+- Faz 8'e devredilenler: tema sistemi (art direction ile birlikte), HUD ikonları (❄/✓ glifleri TMP fontunda yok — art pass), tutorial el sprite'ı (şimdilik pulse halkası).
 
 ### Faz 8 — SDK, build, cila (2 gün + süreklilik)
 - [ ] Native SDK'lar import edilmemiş: MAX (AppLovin), Adjust, GameAnalytics, Firebase + scripting define'ları (`MAX_ENABLED`, `ADJUST_ENABLED`…).

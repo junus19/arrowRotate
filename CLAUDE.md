@@ -17,26 +17,67 @@ Bu proje 2 developer tarafından geliştirilmektedir. Her iki developer da ayrı
 
 ## Oyun: Hexa Arrows (Arrow Rotate)
 
-Hexagon döndürme bulmacası. **Sürükleme yok** — tek etkileşim taşa dokunmak (60° saat yönü dönüş). Renkli ok segmentlerini (tail/mid/head) kuyruktan uca bağla; bağlanan ok otomatik uçar, önü tıkalıysa çarpıp bekler. Buz mekaniği: 3 ok buzlu başlar, toplam çıkış sayısı eşiğe (1/2/3) ulaşınca kırılır. Tüm oklar çıkınca level biter.
+Hexagon döndürme bulmacası. **Sürükleme yok** — tek etkileşim taşa dokunmak (60° saat yönü dönüş). Renkli ok segmentlerini (tail/mid/head) kuyruktan uca bağla; bağlanan ok otomatik uçar, önü tıkalıysa çarpıp bekler. Buz mekaniği: 3 ok buzlu başlar, toplam çıkış sayısı eşiğe (1/2/3) ulaşınca kırılır. Tüm oklar çıkınca level biter. **v1'de fail koşulu yok** (süre/hamle yalnız istatistik).
+
+**Durum (2026-07-13):** Faz 0–7 tamamlandı (bkz. `PLAN.md`). Oyun uçtan uca oynanabilir: Boot'tan Play → tutorial'lı level 1 → 50 level, buz, HUD, coin ödülü. Kalan: Faz 8 (tema/art pass, HUD ikonları, native SDK'lar, build).
 
 **Bağlayıcı kaynaklar (bu sırayla):**
 1. `.claude/skills/hexa-arrows-unity/SKILL.md` — port spesifikasyonu (veri modeli, algoritmalar, zorluk tablosu, görsel oranlar, zorunlu testler)
 2. `.claude/skills/hexa-arrows-unity/reference/hexa-arrows-prototype.html` — davranışta nihai kaynak (source of truth)
-3. `PLAN.md` — faz planı ve yürütme kararları
+3. `PLAN.md` — faz planı, yürütme kararları, faz kapanış notları
 
-**Değişmez kurallar:**
-- `arrowId` (mantık kimliği) ≠ `palette` (görsel renk). TÜM mantık arrowId üzerinden; palette yalnız boyama. Aynı paletteki iki ok hiçbir hücrede komşu olamaz.
-- Mantık katmanı (`Scripts/Core`, `Scripts/Logic`, `Scripts/Generation`) MonoBehaviour'suz saf C#; Unity API kullanmaz, EditMode testlidir. SKILL.md §10'daki 6 test sınıfı her zaman yeşil kalmalı.
-- Mid segment görseli DAİMA merkezden kırık çizgi (kenar ortalarını düz bağlamak yasak).
-- Uçuşa başlayan okun hücreleri veri katmanından ANINDA silinir (uçan ok engel sayılmaz).
+### Kod yerleşimi ve assembly yapısı
+
+Her şey `Assets/_Arrow Rotate/Scripts/` altında. Gamebrain asmdef kullanmadığı için iki katman var:
+
+| Klasör | Assembly | İçerik |
+|---|---|---|
+| `Core/` | `ArrowRotate.Core` (noEngineReferences) | HexCoord, HexMetrics, Mulberry32, Cell/Arrow/HexaLevel, LevelConfig |
+| `Logic/` | `ArrowRotate.Logic` (noEngineReferences) | ConnectionTracer, RayScanner, ExitSimulator, FlightPathBuilder |
+| `Generation/` | `ArrowRotate.Generation` (noEngineReferences) | LevelGenerator (prototip birebir portu) |
+| `Tests/EditMode/` | `ArrowRotate.Tests.EditMode` | 27 test: SKILL.md §10'un 6 zorunlu sınıfı (4 config × 100 seed) + HexMath/Mulberry/Logic birim testleri |
+| `Board/ Input/ Animation/ Gameplay/ GUI/ Integration/` | **Assembly-CSharp** (asmdef YOK — Gamebrain'e erişim için şart) | Görünüm: BoardView/TileView/SegmentView/IceView/TutorialPulse, TapController, FlightRenderer, HexaGameplayManager (durum makinesi), HexaHudPanel, Integration (aşağıda) |
+| `Editor/` | Assembly-CSharp-Editor | `HexaSeedBrowserWindow` (menü: **Arrow Rotate ▸ Seed Browser**) |
+
+Saf C# katmanına (Core/Logic/Generation) MonoBehaviour/Unity API EKLENMEZ; testler her zaman yeşil kalmalı (Test Runner → EditMode → ArrowRotate.Tests.EditMode, ~6 sn).
+
+### Gamebrain bağlantısı (dokunulan yerler)
+
+- **Boot.unity**: "Game Manager" objesindeki component `HexaGameManager : GameManager` ile değiştirildi (inspector'daki data referansları korunarak). `_gameConfig` → `Assets/_Arrow Rotate/Data/Hexa Game Config.asset`. Level sonu +25 coin burada verilir (`_coinRewardPerLevel` alanı).
+- **Game.unity**: yalnız "Hexa Arrows" GO (BoardView + HexaGameplayManager + TapController). Example kalıntıları (trigger'lar, kamera, ışık) silindi — kamera Boot'taki `CameraManager.GameplayCamera`.
+- **GUI.unity**: "Hexa HUD" GO (`HexaHudPanel`) — UI'ı runtime kurar, yalnız EventBus dinler.
+- `HexaGameState_Gameplay : GameState_Gameplay` gameplay state'ini değiştirir (Example deseni); `HexaLevelData : LevelData` seed+zorluk taşır, Scene alanı boş (Level.Load sahne yüklemez).
+- Build sırası: Boot → Game → GUI. `Assets/_Arrow Rotate/Scene/HexaSandbox.unity` = Gamebrain'siz izole test sahnesi (`HexaSandboxDriver`: TapCell/SolveArrow/SolveAll).
+
+### Level içeriği
+
+`Data/Levels/HexaLevel_001..050.asset` (seed + zorluk satırı; eğri: 1→2→3×4→5×44) → `Hexa Game Config._levels`. Yeni level seçmek/ayıklamak için **Seed Browser** kullan: tarama → istatistik/önizleme → bake → "Klasörü Config'e Ata". Elle asset silme/yeniden adlandırma yerine pencereyi tercih et.
+
+### Değişmez kurallar
+
+- `arrowId` (mantık kimliği) ≠ `palette` (görsel renk). TÜM mantık arrowId üzerinden. Aynı paletteki iki ok hiçbir hücrede komşu olamaz (test 6 bekçidir).
+- **Y-ekseni sözleşmesi** (`HexMetrics` + `HexMathTests` ile sabit — DEĞİŞTİRME): Unity açısı = −(30+60d)°, hücre y'si negatiflenir, tap = z'de −60° (ekranda saat yönü).
+- Mid segment görseli DAİMA merkezden kırık çizgi; uçuş polyline'ı da merkezlerden geçer.
+- Uçuşa başlayan okun hücreleri `level.Cells`'ten ANINDA silinir (uçan ok engel sayılmaz).
 - Hücre erişimi `Dictionary<(int q,int r), Cell>`; string key yasak.
-- Level = seed + config (`HexaLevelData : LevelData`); grid runtime'da deterministik üretilir. Hata raporlarında seed loglanır.
+- Zamanlamalar prototip birebir (HexaGameplayManager/SegmentView sabitleri): dönüş 160ms, kontrol 170ms, fırlatma 240ms, bounce 560ms, zincir 180+260ms, uçuş 16.18·S/sn. Değiştirmeden önce bu dosyaya yaz.
+- MeshRenderer renkleri MPB ile ve **linear dönüşümlü** set edilir (`MeshFactory.SetColor`) — proje Linear color space.
+- Framework koduna (`Assets/Gamebrain/`) dokunulmaz; genişletme yalnız subclass ile.
 
-**Oyun kodu yerleşimi:** her şey `Assets/_Arrow Rotate/` altında; Gamebrain'e yalnızca `Scripts/Integration/` içinden subclass ile bağlanılır (`HexaGameManager : GameManager`, `HexaGameState_Gameplay : GameState_Gameplay`, `HexaLevelData : LevelData`). Framework koduna dokunulmaz.
+**Oyun event'leri** (`Scripts/Integration/Events/HexaEvents.cs`): `HexaLevelStartedEvent` (çip verisi `HexaArrowChipInfo[]` taşır), `HexaRotateEvent`, `HexaArrowConnectedEvent`, `HexaArrowExitedEvent`, `HexaArrowBlockedEvent`, `HexaIceBrokenEvent`, `HexaLevelWonEvent`, `HexaTutorialEvent`. Ses/haptik yalnız `FxRequestEvent` (dönüş=Drag, çıkış=RocketLaunch, engel=InvalidDrop, buz=Ice_1; klipler Feedbacks_SO'da henüz atanmadı).
 
-**Oyun event'leri** (`Scripts/Integration/Events/`): `HexaLevelStartedEvent`, `HexaRotateEvent`, `HexaArrowConnectedEvent`, `HexaArrowExitedEvent`, `HexaArrowBlockedEvent`, `HexaIceBrokenEvent`, `HexaLevelWonEvent`, `HexaTutorialEvent`. Ses/haptik yalnız `FxRequestEvent` ile.
+### Bilinen notlar / tuzaklar
 
-**Sahiplik ayrımı:** Dev A = Core/Logic/Generation/testler/Editor tooling/level içeriği · Dev B = Board/Input/Animation/GUI/Gameplay/Integration + sahne-prefab sahipliği. `Cell`/`Arrow` modeli ve event imzaları ortak sözleşmedir — değişiklik önce bu dosyaya yazılır.
+- Tutorial yalnız level index 0'da tetiklenir (`HexaGameState_Gameplay`); kayıt sıfırlamak için `~/Library/Application Support/DefaultCompany/Arrow Rot/Game Data.json` silinir.
+- İlk N level'da ana menü atlanır — template özelliği (`GameData.InstantStartLevelWithoutMainMenu`), bug değil.
+- TMP varsayılan fontunda ❄/✓ glifleri yok — HUD şimdilik sayı/soluk çip kullanıyor; art pass'te sprite ikon.
+- Win panelindeki sayılar (level/ödül) template placeholder'ı — Faz 8'de bağlanacak.
+- Editör odak dışıyken play modu kendiliğinden pause olabiliyor (MCP/arka plan testinde görüldü); test otomasyonunda `EditorApplication.isPaused=false` watchdog'u kullanılıyor, runtime'ı etkilemez.
+- MCP ile script yazımından sonra Unity bazen import etmiyor — `AssetDatabase.ImportAsset(..., ImportRecursive|ForceUpdate)` ile zorla.
+
+### Sahiplik ayrımı
+
+Faz 0–7 tek elden yazıldı; bundan sonrası için: **Dev A** = Core/Logic/Generation + testler + Seed Browser + level içeriği · **Dev B** = Board/Input/Animation/GUI/Gameplay/Integration + sahne-prefab sahipliği (Boot/Game/GUI/HexaSandbox). `Cell`/`Arrow` modeli, Logic public API'si ve event imzaları ortak sözleşmedir — değişiklik önce bu dosyaya yazılır. Sahne dosyalarına aynı anda iki kişi dokunmaz.
 
 ---
 

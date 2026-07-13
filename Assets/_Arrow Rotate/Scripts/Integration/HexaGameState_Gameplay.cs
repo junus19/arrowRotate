@@ -56,13 +56,27 @@ namespace ArrowRotate.Integration
 
             SubscribeGameplay();
 
+            // ilk level: tap tutorial'ı (yalnızca ilk ok + head hücresinde davet halkası)
+            if (_gameData.GetLevelIndex() == 0)
+            {
+                _gameplayManager.StartTutorial();
+                EventBus<HexaTutorialEvent>.Raise(new HexaTutorialEvent { StepIndex = 0 });
+            }
+
             int frozen = 0;
-            foreach (var a in level.Arrows) if (a.FreezeAt > 0) frozen++;
+            var chips = new HexaArrowChipInfo[level.Arrows.Count];
+            for (int i = 0; i < level.Arrows.Count; i++)
+            {
+                var a = level.Arrows[i];
+                if (a.FreezeAt > 0) frozen++;
+                chips[i] = new HexaArrowChipInfo { ArrowId = a.ArrowId, Palette = a.Palette, FreezeAt = a.FreezeAt };
+            }
             EventBus<HexaLevelStartedEvent>.Raise(new HexaLevelStartedEvent
             {
                 ArrowCount = level.Arrows.Count,
                 FrozenArrowCount = frozen,
-                Seed = level.Seed
+                Seed = level.Seed,
+                Arrows = chips
             });
             Debug.Log($"[Hexa] Level başladı — seed={level.Seed}, ok={level.Arrows.Count}, buzlu={frozen}");
         }
@@ -116,13 +130,20 @@ namespace ArrowRotate.Integration
                 ExitedCount = level?.ExitedCount ?? 0,
                 TotalCount = level?.Arrows.Count ?? 0
             });
+            EventBus<FxRequestEvent>.Raise(new FxRequestEvent(EffectType.RocketLaunch));
         }
 
         private void OnHexaBlocked(int arrowId)
-            => EventBus<HexaArrowBlockedEvent>.Raise(new HexaArrowBlockedEvent { ArrowId = arrowId });
+        {
+            EventBus<HexaArrowBlockedEvent>.Raise(new HexaArrowBlockedEvent { ArrowId = arrowId });
+            EventBus<FxRequestEvent>.Raise(new FxRequestEvent(EffectType.InvalidDrop));
+        }
 
         private void OnHexaIceBroken(int arrowId)
-            => EventBus<HexaIceBrokenEvent>.Raise(new HexaIceBrokenEvent { ArrowId = arrowId });
+        {
+            EventBus<HexaIceBrokenEvent>.Raise(new HexaIceBrokenEvent { ArrowId = arrowId });
+            EventBus<FxRequestEvent>.Raise(new FxRequestEvent(EffectType.Ice_1));
+        }
 
         protected override void OnLevelFinished(Status status)
         {

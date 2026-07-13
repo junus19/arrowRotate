@@ -17,5 +17,5 @@ MonoBehaviour:
   _difficulty: 1
   _objectives: []
   _goals: []
-  _seed: 500005
-  _difficultyLevel: 5
+  _seed: 300005
+  _difficultyLevel: 3

@@ -44,6 +44,8 @@ namespace ArrowRotate.Game
         private readonly Dictionary<int, TraceResult> _pendingExit = new Dictionary<int, TraceResult>();
         private bool _timerStarted;
         private float _timerStart;
+        private int _tutorialArrowId = -1;
+        private TutorialPulse _tutorialPulse;
 
         private void Awake()
         {
@@ -63,7 +65,34 @@ namespace ArrowRotate.Game
             MoveCount = 0;
             Won = false;
             _timerStarted = false;
+            StopTutorial();
             Board.Build(level);
+        }
+
+        // ── tutorial ───────────────────────────────────────────────────────────
+        /// <summary>İlk level: yalnızca ilk ok döndürülebilir, head hücresinde tap daveti halkası.
+        /// Ok bağlanınca kısıt kalkar.</summary>
+        public void StartTutorial()
+        {
+            if (_level == null || _level.Arrows.Count == 0) return;
+            _tutorialArrowId = 0;
+            var head = _level.GetCell(_level.Arrows[0].HeadPos);
+            var (x, y) = HexMetrics.Center(head.Q, head.R, Board.CellSize);
+            _tutorialPulse = TutorialPulse.Create(Board.transform, new Vector3(x, y, 0f), Board.CellSize);
+            ArrowConnected += OnTutorialArrowConnected;
+        }
+
+        public void StopTutorial()
+        {
+            if (_tutorialArrowId < 0 && _tutorialPulse == null) return;
+            ArrowConnected -= OnTutorialArrowConnected;
+            _tutorialArrowId = -1;
+            if (_tutorialPulse != null) { Destroy(_tutorialPulse.gameObject); _tutorialPulse = null; }
+        }
+
+        private void OnTutorialArrowConnected(int arrowId)
+        {
+            if (arrowId == 0) StopTutorial();
         }
 
         // ── input ──────────────────────────────────────────────────────────────
@@ -82,6 +111,7 @@ namespace ArrowRotate.Game
 
             var arrow = _level.Arrows[cell.ArrowId];
             if (arrow.State != ArrowState.Idle) return;       // bağlı/bekleyen/uçan kilitli
+            if (_tutorialArrowId >= 0 && cell.ArrowId != _tutorialArrowId) return; // tutorial kısıtı
 
             if (arrow.IsFrozen(_level.ExitedCount))
             {

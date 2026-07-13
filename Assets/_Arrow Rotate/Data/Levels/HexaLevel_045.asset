@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e4b84b9491774e8796509c214179cc7, type: 3}
+  m_Name: HexaLevel_045
+  m_EditorClassIdentifier: Assembly-CSharp::ArrowRotate.Integration.HexaLevelData
+  _scene: {fileID: 0}
+  _sceneName: 
+  _difficulty: 1
+  _objectives: []
+  _goals: []
+  _seed: 500044
+  _difficultyLevel: 5
