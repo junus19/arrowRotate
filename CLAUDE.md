@@ -103,6 +103,7 @@ Asıl level düzenleme aracı — arrowJam editörünün hex uyarlaması. Tüm d
 
 ### Bilinen notlar / tuzaklar
 
+- **Prototipten bilinçli sapma (2026-07-13):** taş saydamlık akışı ters çevrildi. Prototipte taşlar bounce SONRASI kalıcı görünmez olur (`pulseWaiting`/`.tile.clear`); bizde ok BAĞLANINCA taşlar saydamlaşır (`TileView.FadeOut`), çarpıp geri dönerse bounce bitiminde GERİ AÇILIR (`FadeIn`); zincirleme yeniden fırlatmada tekrar saydamlaşır. `TileView.Vanish` mevcut alfadan başlar (saydam taş uçuşta geri parlamaz).
 - Tutorial yalnız level index 0'da tetiklenir (`HexaGameState_Gameplay`); kayıt sıfırlamak için `~/Library/Application Support/DefaultCompany/Arrow Rot/Game Data.json` silinir.
 - İlk N level'da ana menü atlanır — template özelliği (`GameData.InstantStartLevelWithoutMainMenu`), bug değil.
 - TMP varsayılan fontunda ❄/✓ glifleri yok — HUD şimdilik sayı/soluk çip kullanıyor; art pass'te sprite ikon.

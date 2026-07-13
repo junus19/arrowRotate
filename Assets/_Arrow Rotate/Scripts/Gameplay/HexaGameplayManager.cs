@@ -145,6 +145,7 @@ namespace ArrowRotate.Game
 
             arrow.State = ArrowState.Connected;
             _pendingExit[arrowId] = res;
+            FadeTiles(arrow, visible: false); // bağlandı: arkadaki taşlar saydamlaşır
             ArrowConnected?.Invoke(arrowId);
             StartCoroutine(LaunchAfterDelay(arrowId));
         }
@@ -236,6 +237,7 @@ namespace ArrowRotate.Game
             {
                 if (a.State != ArrowState.Waiting) continue;
                 a.State = ArrowState.Connected;
+                FadeTiles(a, visible: false); // yeniden fırlatma öncesi taşlar tekrar saydamlaşır
                 StartCoroutine(RelaunchAfterDelay(a.ArrowId, delay));
                 delay += ChainStep;
             }
@@ -270,15 +272,19 @@ namespace ArrowRotate.Game
             fr.Bounce(hitDist, BounceDuration, () =>
             {
                 foreach (var ck in arrow.Cells) Board.GetSegment(ck)?.SetVisible(true);
-                PulseWaiting(arrow);
+                FadeTiles(arrow, visible: true); // çarpıp geri döndü: taşlar geri açılır
                 ArrowBlocked?.Invoke(arrow.ArrowId);
             });
         }
 
-        /// <summary>Doğru çözüldü ama önü tıkalı: taşlar görünmez olur, segment zeminde kalır.</summary>
-        private void PulseWaiting(Arrow arrow)
+        private void FadeTiles(Arrow arrow, bool visible)
         {
-            foreach (var ck in arrow.Cells) Board.GetTile(ck)?.FadeOut();
+            foreach (var ck in arrow.Cells)
+            {
+                var tile = Board.GetTile(ck);
+                if (tile == null) continue;
+                if (visible) tile.FadeIn(); else tile.FadeOut();
+            }
         }
     }
 }
