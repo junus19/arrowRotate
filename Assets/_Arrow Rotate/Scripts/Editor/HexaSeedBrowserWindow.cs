@@ -123,11 +123,12 @@ namespace ArrowRotate.EditorTools
 
             System.IO.Directory.CreateDirectory(LevelsFolder);
             int nextIndex = AssetDatabase.FindAssets("t:HexaLevelData", new[] { LevelsFolder }).Length + 1;
+            var cfg = LevelConfig.ForLevel(_difficulty);
 
             foreach (var row in selected)
             {
                 var asset = CreateInstance<HexaLevelData>();
-                asset.EditorInit(row.Seed, _difficulty);
+                asset.FromHexaLevel(row.Level, cfg.Radius); // hücreler asset'e yazılır
                 string path = AssetDatabase.GenerateUniqueAssetPath($"{LevelsFolder}/HexaLevel_{nextIndex:000}.asset");
                 AssetDatabase.CreateAsset(asset, path);
                 nextIndex++;

@@ -17,5 +17,629 @@ MonoBehaviour:
   _difficulty: 1
   _objectives: []
   _goals: []
-  _seed: 500028
-  _difficultyLevel: 5
+  Radius: 7
+  Cells:
+  - Q: 1
+    R: 1
+    ArrowId: 0
+    Type: 0
+    A: -1
+    B: 3
+    Rot: 0
+  - Q: 0
+    R: 1
+    ArrowId: 0
+    Type: 1
+    A: 0
+    B: 4
+    Rot: 3
+  - Q: 0
+    R: 0
+    ArrowId: 0
+    Type: 1
+    A: 1
+    B: 0
+    Rot: 2
+  - Q: 1
+    R: 0
+    ArrowId: 0
+    Type: 1
+    A: 3
+    B: 0
+    Rot: 3
+  - Q: 2
+    R: 0
+    ArrowId: 0
+    Type: 1
+    A: 3
+    B: 5
+    Rot: 0
+  - Q: 3
+    R: -1
+    ArrowId: 0
+    Type: 2
+    A: 2
+    B: 5
+    Rot: 5
+  - Q: 0
+    R: 2
+    ArrowId: 1
+    Type: 0
+    A: -1
+    B: 0
+    Rot: 2
+  - Q: 1
+    R: 2
+    ArrowId: 1
+    Type: 1
+    A: 3
+    B: 5
+    Rot: 2
+  - Q: 2
+    R: 1
+    ArrowId: 1
+    Type: 1
+    A: 2
+    B: 1
+    Rot: 2
+  - Q: 2
+    R: 2
+    ArrowId: 1
+    Type: 2
+    A: 4
+    B: 5
+    Rot: 4
+  - Q: -1
+    R: 0
+    ArrowId: 2
+    Type: 0
+    A: -1
+    B: 3
+    Rot: 3
+  - Q: -2
+    R: 0
+    ArrowId: 2
+    Type: 1
+    A: 0
+    B: 4
+    Rot: 5
+  - Q: -2
+    R: -1
+    ArrowId: 2
+    Type: 1
+    A: 1
+    B: 4
+    Rot: 5
+  - Q: -2
+    R: -2
+    ArrowId: 2
+    Type: 1
+    A: 1
+    B: 5
+    Rot: 4
+  - Q: -1
+    R: -3
+    ArrowId: 2
+    Type: 1
+    A: 2
+    B: 0
+    Rot: 2
+  - Q: 0
+    R: -3
+    ArrowId: 2
+    Type: 1
+    A: 3
+    B: 2
+    Rot: 3
+  - Q: -1
+    R: -2
+    ArrowId: 2
+    Type: 1
+    A: 5
+    B: 0
+    Rot: 1
+  - Q: 0
+    R: -2
+    ArrowId: 2
+    Type: 1
+    A: 3
+    B: 0
+    Rot: 2
+  - Q: 1
+    R: -2
+    ArrowId: 2
+    Type: 1
+    A: 3
+    B: 1
+    Rot: 1
+  - Q: 1
+    R: -1
+    ArrowId: 2
+    Type: 2
+    A: 4
+    B: 3
+    Rot: 0
+  - Q: 0
+    R: 3
+    ArrowId: 3
+    Type: 0
+    A: -1
+    B: 2
+    Rot: 3
+  - Q: -1
+    R: 4
+    ArrowId: 3
+    Type: 1
+    A: 5
+    B: 4
+    Rot: 4
+  - Q: -1
+    R: 3
+    ArrowId: 3
+    Type: 2
+    A: 1
+    B: 4
+    Rot: 0
+  - Q: -3
+    R: 0
+    ArrowId: 4
+    Type: 0
+    A: -1
+    B: 2
+    Rot: 4
+  - Q: -4
+    R: 1
+    ArrowId: 4
+    Type: 1
+    A: 5
+    B: 4
+    Rot: 4
+  - Q: -4
+    R: 0
+    ArrowId: 4
+    Type: 1
+    A: 1
+    B: 3
+    Rot: 4
+  - Q: -5
+    R: 0
+    ArrowId: 4
+    Type: 1
+    A: 0
+    B: 4
+    Rot: 3
+  - Q: -5
+    R: -1
+    ArrowId: 4
+    Type: 1
+    A: 1
+    B: 0
+    Rot: 5
+  - Q: -4
+    R: -1
+    ArrowId: 4
+    Type: 1
+    A: 3
+    B: 5
+    Rot: 2
+  - Q: -3
+    R: -2
+    ArrowId: 4
+    Type: 1
+    A: 2
+    B: 1
+    Rot: 1
+  - Q: -3
+    R: -1
+    ArrowId: 4
+    Type: 2
+    A: 4
+    B: 1
+    Rot: 1
+  - Q: 4
+    R: -2
+    ArrowId: 5
+    Type: 0
+    A: -1
+    B: 1
+    Rot: 1
+  - Q: 4
+    R: -1
+    ArrowId: 5
+    Type: 1
+    A: 4
+    B: 5
+    Rot: 4
+  - Q: 5
+    R: -2
+    ArrowId: 5
+    Type: 1
+    A: 2
+    B: 5
+    Rot: 3
+  - Q: 6
+    R: -3
+    ArrowId: 5
+    Type: 1
+    A: 2
+    B: 1
+    Rot: 4
+  - Q: 6
+    R: -2
+    ArrowId: 5
+    Type: 1
+    A: 4
+    B: 0
+    Rot: 2
+  - Q: 7
+    R: -2
+    ArrowId: 5
+    Type: 1
+    A: 3
+    B: 4
+    Rot: 4
+  - Q: 7
+    R: -3
+    ArrowId: 5
+    Type: 2
+    A: 1
+    B: 5
+    Rot: 5
+  - Q: -2
+    R: -3
+    ArrowId: 6
+    Type: 0
+    A: -1
+    B: 4
+    Rot: 3
+  - Q: -2
+    R: -4
+    ArrowId: 6
+    Type: 1
+    A: 1
+    B: 5
+    Rot: 4
+  - Q: -1
+    R: -5
+    ArrowId: 6
+    Type: 2
+    A: 2
+    B: 5
+    Rot: 2
+  - Q: -1
+    R: 1
+    ArrowId: 7
+    Type: 0
+    A: -1
+    B: 2
+    Rot: 1
+  - Q: -2
+    R: 2
+    ArrowId: 7
+    Type: 1
+    A: 5
+    B: 1
+    Rot: 5
+  - Q: -2
+    R: 3
+    ArrowId: 7
+    Type: 1
+    A: 4
+    B: 1
+    Rot: 4
+  - Q: -2
+    R: 4
+    ArrowId: 7
+    Type: 1
+    A: 4
+    B: 3
+    Rot: 1
+  - Q: -3
+    R: 4
+    ArrowId: 7
+    Type: 1
+    A: 0
+    B: 2
+    Rot: 4
+  - Q: -4
+    R: 5
+    ArrowId: 7
+    Type: 2
+    A: 5
+    B: 2
+    Rot: 3
+  - Q: 2
+    R: -1
+    ArrowId: 8
+    Type: 0
+    A: -1
+    B: 4
+    Rot: 2
+  - Q: 2
+    R: -2
+    ArrowId: 8
+    Type: 1
+    A: 1
+    B: 4
+    Rot: 1
+  - Q: 2
+    R: -3
+    ArrowId: 8
+    Type: 1
+    A: 1
+    B: 0
+    Rot: 1
+  - Q: 3
+    R: -3
+    ArrowId: 8
+    Type: 1
+    A: 3
+    B: 1
+    Rot: 0
+  - Q: 3
+    R: -2
+    ArrowId: 8
+    Type: 1
+    A: 4
+    B: 5
+    Rot: 2
+  - Q: 4
+    R: -3
+    ArrowId: 8
+    Type: 1
+    A: 2
+    B: 5
+    Rot: 1
+  - Q: 5
+    R: -4
+    ArrowId: 8
+    Type: 1
+    A: 2
+    B: 3
+    Rot: 5
+  - Q: 4
+    R: -4
+    ArrowId: 8
+    Type: 1
+    A: 0
+    B: 4
+    Rot: 1
+  - Q: 4
+    R: -5
+    ArrowId: 8
+    Type: 2
+    A: 1
+    B: 4
+    Rot: 1
+  - Q: -5
+    R: 1
+    ArrowId: 9
+    Type: 0
+    A: -1
+    B: 3
+    Rot: 3
+  - Q: -6
+    R: 1
+    ArrowId: 9
+    Type: 1
+    A: 0
+    B: 3
+    Rot: 4
+  - Q: -7
+    R: 1
+    ArrowId: 9
+    Type: 1
+    A: 0
+    B: 5
+    Rot: 0
+  - Q: -6
+    R: 0
+    ArrowId: 9
+    Type: 2
+    A: 2
+    B: 0
+    Rot: 0
+  - Q: 2
+    R: -4
+    ArrowId: 10
+    Type: 0
+    A: -1
+    B: 5
+    Rot: 2
+  - Q: 3
+    R: -5
+    ArrowId: 10
+    Type: 1
+    A: 2
+    B: 3
+    Rot: 2
+  - Q: 2
+    R: -5
+    ArrowId: 10
+    Type: 1
+    A: 0
+    B: 3
+    Rot: 5
+  - Q: 1
+    R: -5
+    ArrowId: 10
+    Type: 1
+    A: 0
+    B: 2
+    Rot: 2
+  - Q: 0
+    R: -4
+    ArrowId: 10
+    Type: 1
+    A: 5
+    B: 3
+    Rot: 3
+  - Q: -1
+    R: -4
+    ArrowId: 10
+    Type: 1
+    A: 0
+    B: 5
+    Rot: 2
+  - Q: 0
+    R: -5
+    ArrowId: 10
+    Type: 1
+    A: 2
+    B: 4
+    Rot: 0
+  - Q: 0
+    R: -6
+    ArrowId: 10
+    Type: 2
+    A: 1
+    B: 3
+    Rot: 4
+  - Q: -7
+    R: 0
+    ArrowId: 11
+    Type: 0
+    A: -1
+    B: 5
+    Rot: 3
+  - Q: -6
+    R: -1
+    ArrowId: 11
+    Type: 1
+    A: 2
+    B: 5
+    Rot: 2
+  - Q: -5
+    R: -2
+    ArrowId: 11
+    Type: 1
+    A: 2
+    B: 5
+    Rot: 0
+  - Q: -4
+    R: -3
+    ArrowId: 11
+    Type: 1
+    A: 2
+    B: 5
+    Rot: 2
+  - Q: -3
+    R: -4
+    ArrowId: 11
+    Type: 1
+    A: 2
+    B: 5
+    Rot: 0
+  - Q: -2
+    R: -5
+    ArrowId: 11
+    Type: 1
+    A: 2
+    B: 5
+    Rot: 4
+  - Q: -1
+    R: -6
+    ArrowId: 11
+    Type: 2
+    A: 2
+    B: 5
+    Rot: 2
+  - Q: 3
+    R: -6
+    ArrowId: 12
+    Type: 0
+    A: -1
+    B: 4
+    Rot: 0
+  - Q: 3
+    R: -7
+    ArrowId: 12
+    Type: 1
+    A: 1
+    B: 2
+    Rot: 5
+  - Q: 2
+    R: -6
+    ArrowId: 12
+    Type: 1
+    A: 5
+    B: 3
+    Rot: 1
+  - Q: 1
+    R: -6
+    ArrowId: 12
+    Type: 1
+    A: 0
+    B: 5
+    Rot: 5
+  - Q: 2
+    R: -7
+    ArrowId: 12
+    Type: 2
+    A: 2
+    B: 5
+    Rot: 2
+  - Q: 4
+    R: -7
+    ArrowId: 13
+    Type: 0
+    A: -1
+    B: 1
+    Rot: 2
+  - Q: 4
+    R: -6
+    ArrowId: 13
+    Type: 1
+    A: 4
+    B: 0
+    Rot: 2
+  - Q: 5
+    R: -6
+    ArrowId: 13
+    Type: 1
+    A: 3
+    B: 1
+    Rot: 5
+  - Q: 5
+    R: -5
+    ArrowId: 13
+    Type: 1
+    A: 4
+    B: 0
+    Rot: 2
+  - Q: 6
+    R: -5
+    ArrowId: 13
+    Type: 2
+    A: 3
+    B: 1
+    Rot: 1
+  Arrows:
+  - Palette: 3
+    FreezeAt: 0
+  - Palette: 1
+    FreezeAt: 0
+  - Palette: 9
+    FreezeAt: 0
+  - Palette: 7
+    FreezeAt: 0
+  - Palette: 5
+    FreezeAt: 0
+  - Palette: 9
+    FreezeAt: 1
+  - Palette: 6
+    FreezeAt: 0
+  - Palette: 4
+    FreezeAt: 0
+  - Palette: 2
+    FreezeAt: 0
+  - Palette: 2
+    FreezeAt: 3
+  - Palette: 8
+    FreezeAt: 0
+  - Palette: 0
+    FreezeAt: 2
+  - Palette: 6
+    FreezeAt: 0
+  - Palette: 7
+    FreezeAt: 0

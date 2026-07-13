@@ -169,6 +169,11 @@ Ses/haptik: yalnızca `FxRequestEvent` (Rotate / Connect / Launch / Bounce / Ice
 - [x] İlk içerik paketi: 50 level (zorluk eğrisi 1→2→3×4→5×44, test edilmiş seed uzayından) Config'e atandı. Küratörlük/ayıklama Seed Browser ile yapılabilir.
 - Faz 8'e devredilenler: tema sistemi (art direction ile birlikte), HUD ikonları (❄/✓ glifleri TMP fontunda yok — art pass), tutorial el sprite'ı (şimdilik pulse halkası).
 
+### Ek iş — Hexa Level Editor ✅ (2026-07-13)
+- [x] **Level formatı değişti:** `HexaLevelData` artık tam hücre dizisi saklar (seed alanı kalktı; `HexaCellSave[]` + `HexaArrowSave[]` + Radius, To/FromHexaLevel dönüşümleri). Rot'lar asset'te — editördeki diziliş oyundakiyle birebir. 50 mevcut level aynı seed formülüyle migrate edildi, runtime doğrulandı.
+- [x] `HexaLevelEditorWindow` (**Arrow Rotate ▸ Level Editor**, arrowJam editör paritesi): level listesi (GameConfig checkbox, rename/duplicate/sil) · hex canvas (prototip koordinatları, rot uygulanmış segment çizimi, buz katmanı+rozet, move hayaleti, draw önizleme) · araçlar: Draw (kuyruk→head), Erase (tüm ok), Move (tüm ok), Rotate, Recolor, Ice, Edit (denetçi + uçuş yönü döndürme) · "Paletleri Ata" çizge boyaması · Scramble (bağlı-kalmaz garantili) / Çöz · Random Fill (zorluk+seed → üretici) · canlı doğrulama (yapı, bitişiklik, çözülebilirlik, karışıklık, palet komşuluğu, buz DAG). Undo destekli; doğrulama ve Undo editörde test edildi.
+- Seed Browser durur (toplu tarama/ayıklama); bake artık hücrelere yazar.
+
 ### Faz 8 — SDK, build, cila (2 gün + süreklilik)
 - [ ] Native SDK'lar import edilmemiş: MAX (AppLovin), Adjust, GameAnalytics, Firebase + scripting define'ları (`MAX_ENABLED`, `ADJUST_ENABLED`…).
 - [ ] Analytics şeması: level_start/win (seed loglanır — spec §11 repro önerisi), rotate sayısı, süre, buz kırılmaları, blocked sayısı.

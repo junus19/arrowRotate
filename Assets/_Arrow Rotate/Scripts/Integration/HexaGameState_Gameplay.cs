@@ -1,5 +1,4 @@
 using ArrowRotate.Game;
-using ArrowRotate.Generation;
 using ArrowRotate.View;
 using EC.Core.Common;
 using GameBrain.Casual;
@@ -46,8 +45,13 @@ namespace ArrowRotate.Integration
                 Debug.LogError($"[Hexa] LevelData HexaLevelData değil: {_levelManager.CurrentLevel.Data.name}");
                 return;
             }
+            if (!data.HasCells)
+            {
+                Debug.LogError($"[Hexa] Level'da hücre verisi yok (editörde doldurulmalı): {data.name}");
+                return;
+            }
 
-            var level = LevelGenerator.Generate(data.Seed, data.BuildConfig());
+            var level = data.ToHexaLevel();
             _gameplayManager.Begin(level);
 
             var gameplayCam = CameraManager.Instance.GameplayCamera;
@@ -78,7 +82,7 @@ namespace ArrowRotate.Integration
                 Seed = level.Seed,
                 Arrows = chips
             });
-            Debug.Log($"[Hexa] Level başladı — seed={level.Seed}, ok={level.Arrows.Count}, buzlu={frozen}");
+            Debug.Log($"[Hexa] Level başladı — {data.name}, ok={level.Arrows.Count}, buzlu={frozen}");
         }
 
         private void SubscribeGameplay()

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ArrowRotate.Core;
 using GameBrain.Casual;
 using UnityEngine;
@@ -5,29 +6,81 @@ using UnityEngine;
 namespace ArrowRotate.Integration
 {
     /// <summary>
-    /// Hexa Arrows level'ı = seed + zorluk konfigürasyonu. Grid runtime'da deterministik üretilir
-    /// (aynı seed → aynı level; hata raporlarında seed loglanır). Scene alanı boş bırakılır —
-    /// Level.Load() sahne yüklemeyi atlar, Game sahnesi GameState_Gameplay tarafından yüklenir.
+    /// Hexa Arrows level'ı — hücreler asset'te AÇIKÇA saklanır (arrowJam deseni; elle düzenlenebilir).
+    /// Cells dizisi DAİMA ok sırasında ve her ok içinde kuyruk→head sıralıdır (invariant).
+    /// Rot değerleri de saklanır: editördeki başlangıç dizilimi oyundakiyle birebir aynıdır.
+    /// Scene alanı boş bırakılır — Level.Load() sahne yüklemeyi atlar.
+    /// Düzenleme: Arrow Rotate ▸ Level Editor.
     /// </summary>
     [CreateAssetMenu(menuName = "Arrow Rotate/Hexa Level Data", fileName = "HexaLevel_000", order = 0)]
     public class HexaLevelData : LevelData
     {
-        [Header("Hexa Arrows")]
-        [SerializeField] private int _seed = 1;
-        [Tooltip("Zorluk tablosu satırı (SKILL.md §7): 1, 2, 3-4, 5+")]
-        [SerializeField] private int _difficultyLevel = 1;
+        [HideInInspector] public int Radius = 5;
+        [HideInInspector] public HexaCellSave[] Cells = System.Array.Empty<HexaCellSave>();
+        [HideInInspector] public HexaArrowSave[] Arrows = System.Array.Empty<HexaArrowSave>();
 
-        public int Seed => _seed;
-        public int DifficultyLevel => _difficultyLevel;
+        public bool HasCells => Cells != null && Cells.Length > 0;
 
-        public LevelConfig BuildConfig() => LevelConfig.ForLevel(_difficultyLevel);
-
-#if UNITY_EDITOR
-        public void EditorInit(int seed, int difficultyLevel)
+        public HexaLevel ToHexaLevel()
         {
-            _seed = seed;
-            _difficultyLevel = difficultyLevel;
+            var level = new HexaLevel();
+            if (Arrows == null || Cells == null) return level;
+
+            for (int i = 0; i < Arrows.Length; i++)
+            {
+                level.Arrows.Add(new Arrow
+                {
+                    ArrowId = i,
+                    Palette = Arrows[i].Palette,
+                    FreezeAt = Arrows[i].FreezeAt
+                });
+            }
+
+            foreach (var s in Cells) // ok sırası + kuyruk→head sıralı
+            {
+                var cell = new Cell { Q = s.Q, R = s.R, ArrowId = s.ArrowId, Type = s.Type, A = s.A, B = s.B, Rot = s.Rot };
+                level.Cells[(s.Q, s.R)] = cell;
+                level.Arrows[s.ArrowId].Cells.Add((s.Q, s.R));
+                if (s.Type == CellType.Head) level.Arrows[s.ArrowId].ExitDir = s.B;
+            }
+            return level;
         }
-#endif
+
+        public void FromHexaLevel(HexaLevel level, int radius)
+        {
+            Radius = radius;
+            Arrows = new HexaArrowSave[level.Arrows.Count];
+            var cells = new List<HexaCellSave>();
+
+            foreach (var arrow in level.Arrows)
+            {
+                Arrows[arrow.ArrowId] = new HexaArrowSave { Palette = arrow.Palette, FreezeAt = arrow.FreezeAt };
+                foreach (var pos in arrow.Cells)
+                {
+                    var c = level.GetCell(pos);
+                    cells.Add(new HexaCellSave { Q = c.Q, R = c.R, ArrowId = c.ArrowId, Type = c.Type, A = c.A, B = c.B, Rot = c.Rot });
+                }
+            }
+            Cells = cells.ToArray();
+        }
+    }
+
+    [System.Serializable]
+    public class HexaCellSave
+    {
+        public int Q;
+        public int R;
+        public int ArrowId;
+        public CellType Type;
+        public int A = -1; // lokal giriş kenarı (tail: -1)
+        public int B;      // lokal çıkış kenarı / head: uçuş yönü
+        public int Rot;    // 0-5 — başlangıç karışıklığı asset'te saklanır
+    }
+
+    [System.Serializable]
+    public class HexaArrowSave
+    {
+        public int Palette;  // görsel renk (arrowId DEĞİL)
+        public int FreezeAt; // 0 = buzsuz, 1..3 = eşik
     }
 }
