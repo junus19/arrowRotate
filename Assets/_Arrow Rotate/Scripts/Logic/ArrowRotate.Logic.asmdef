@@ -1,0 +1,16 @@
+{
+    "name": "ArrowRotate.Logic",
+    "rootNamespace": "ArrowRotate.Logic",
+    "references": [
+        "ArrowRotate.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

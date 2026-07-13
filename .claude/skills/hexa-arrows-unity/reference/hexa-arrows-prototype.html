@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Hexa Arrows</title>
+<style>
+  :root{
+    --bg:#5b6285;
+    --bg-deep:#4e5476;
+    --tile:#f3efe2;
+    --tile-edge:#e6e1cf;
+    --ink:#f5f4fa;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(120% 90% at 50% 0%, var(--bg) 0%, var(--bg-deep) 100%);
+    font-family:"Avenir Next","Nunito","Segoe UI",system-ui,sans-serif;
+    color:var(--ink);
+    display:flex;flex-direction:column;align-items:center;
+    overflow:hidden;user-select:none;touch-action:manipulation;
+  }
+  #top{
+    width:100%;max-width:520px;
+    display:flex;align-items:flex-start;justify-content:space-between;
+    padding:16px 18px 0;
+  }
+  #top h1{font-size:26px;font-weight:800;letter-spacing:.5px;text-shadow:0 2px 4px rgba(0,0,0,.25)}
+  #stats{font-size:14px;font-weight:700;opacity:.85;margin-top:4px;letter-spacing:.3px}
+  #chips{display:flex;gap:7px;margin-top:8px;flex-wrap:wrap;max-width:310px}
+  .chip{
+    width:22px;height:22px;border-radius:50%;
+    box-shadow:inset 0 -3px 5px rgba(0,0,0,.28), 0 2px 3px rgba(0,0,0,.25);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:900;color:#fff;
+    transition:transform .3s cubic-bezier(.34,1.56,.64,1), filter .3s;
+  }
+  .chip .fr{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:900;color:#1d3d5c;
+    background:rgba(200,232,255,.85);border-radius:50%;}
+  .chip{position:relative}
+  .chip .ck{opacity:0;transform:scale(.3);transition:all .3s cubic-bezier(.34,1.56,.64,1)}
+  .chip.done{filter:saturate(.55) brightness(1.05)}
+  .chip.done .ck{opacity:1;transform:scale(1)}
+  #regen{
+    background:rgba(255,255,255,.14);border:none;border-radius:12px;
+    width:44px;height:44px;color:var(--ink);font-size:22px;cursor:pointer;
+    box-shadow:0 2px 6px rgba(0,0,0,.2);
+    transition:transform .4s ease, background .2s;
+  }
+  #regen:active{transform:rotate(180deg) scale(.92)}
+  #boardWrap{flex:1;width:100%;max-width:560px;display:flex;align-items:center;justify-content:center;padding:6px 8px 14px}
+  svg{width:100%;height:100%;display:block}
+  .tile{
+    stroke-width:5;stroke-linejoin:round;
+    cursor:pointer;
+    transform-box:fill-box;transform-origin:center;
+    transition:transform .45s cubic-bezier(.5,0,.7,.4), opacity .45s ease;
+  }
+  .cellG.locked .tile{cursor:default}
+  .tile.vanish{transform:scale(.25) rotate(30deg);opacity:0}
+  .tile.clear{opacity:0;pointer-events:none}
+  .rotG{transition:transform .16s cubic-bezier(.3,.9,.4,1.05)}
+  .seg{fill:none;stroke-width:5.2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+  .segHead{stroke:none;pointer-events:none}
+  .tailDot{pointer-events:none}
+  .fly{fill:none;stroke-width:5.2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+  #hint{font-size:13px;opacity:.65;padding-bottom:12px;text-align:center}
+  #winOv{
+    position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(40,44,70,.55);backdrop-filter:blur(3px);z-index:10;
+  }
+  #winCard{
+    background:var(--tile);color:#3d425f;border-radius:22px;padding:34px 44px;
+    text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.4);
+    animation:pop .45s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+  .iceG{pointer-events:none}
+  .iceHex{fill:rgba(198,230,255,.62);stroke:rgba(240,250,255,.95);stroke-width:2.5;stroke-linejoin:round}
+  .crack{fill:none;stroke:rgba(255,255,255,.75);stroke-width:1.6;stroke-linecap:round}
+  .iceBadge{fill:#eaf6ff;stroke:#9cc8e8;stroke-width:1.5}
+  .iceBadgeT{font:900 15px "Avenir Next","Nunito",sans-serif;fill:#1d3d5c;text-anchor:middle;dominant-baseline:central}
+  @keyframes iceShake{0%,100%{transform:translate(0,0)}25%{transform:translate(-2.5px,1px)}50%{transform:translate(2.5px,-1px)}75%{transform:translate(-1.5px,-1px)}}
+  .iceG.shake{animation:iceShake .3s ease}
+  .shard{transition:transform .65s cubic-bezier(.2,.5,.4,1), opacity .65s ease;transform-box:fill-box;transform-origin:center}
+  #winCard h2{font-size:26px;font-weight:800;margin-bottom:6px}
+  #winCard p{font-size:14px;opacity:.7;margin-bottom:18px}
+  #nextBtn{
+    background:#3d425f;color:#fff;border:none;border-radius:14px;
+    padding:12px 30px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;
+  }
+  #nextBtn:active{transform:scale(.95)}
+  @media (prefers-reduced-motion: reduce){
+    .rotG{transition:none}
+  }
+</style>
+</head>
+<body>
+  <div id="top">
+    <div>
+      <h1>Level <span id="lvl">1</span></h1>
+      <div id="stats">⏱ <span id="time">0:00</span> · <span id="moves">0</span> hamle</div>
+      <div id="chips"></div>
+    </div>
+    <button id="regen" title="Yeni bulmaca">↻</button>
+  </div>
+  <div id="boardWrap"><svg id="board"></svg></div>
+  <div id="hint">Bir altıgene dokun → 60° döner. Aynı rengin parçalarını birleştir, ok kendiliğinden uçar.</div>
+  <div id="winOv"><div id="winCard">
+    <h2>Level tamam! 🎉</h2><p id="winStats">Tüm oklar alandan çıktı.</p>
+    <button id="nextBtn">Sonraki Level</button>
+  </div></div>
+
+<script>
+//<logic>
+// ===== hex temelleri (flat-top, axial koordinat) =====
+const DIRS = [[1,0],[0,1],[-1,1],[-1,0],[0,-1],[1,-1]]; // dir d -> açı 30+60d (y aşağı)
+const S = 34;                       // hex yarıçapı (köşe)
+const APO = Math.sqrt(3)/2 * S;     // kenar orta uzaklığı
+const key = (q,r)=>q+','+r;
+const opp = d=>(d+3)%6;
+const center = (q,r)=>[1.5*S*q, Math.sqrt(3)*S*(r+q/2)];
+const dirAngle = d=>(30+60*d)*Math.PI/180;
+const edgeMid = (q,r,d)=>{const[cx,cy]=center(q,r);const a=dirAngle(d);return[cx+APO*Math.cos(a),cy+APO*Math.sin(a)];};
+
+function mulberry(seed){let t=seed>>>0;return()=>{t+=0x6D2B79F5;let r=Math.imul(t^t>>>15,1|t);r^=r+Math.imul(r^r>>>7,61|r);return((r^r>>>14)>>>0)/4294967296;};}
+let rnd = Math.random;
+const ri=(a,b)=>a+Math.floor(rnd()*(b-a+1));
+const shuffle=arr=>{for(let i=arr.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;};
+
+// ===== seviye üretimi =====
+// hücre: {q,r,color,type:'tail'|'mid'|'head', a,b, rot}   a/b: lokal kenar yönleri (çözümde rot=0)
+// tail: b=çıkış  |  mid: a=giriş,b=çıkış  |  head: a=giriş, b=uçuş yönü
+function genLevel(seed,cfg){
+  cfg = cfg || {R:6, lengths:[3,4,5,6,7,7,8,8,9,10], minEdges:5};
+  rnd = mulberry(seed);
+  const R = cfg.R; // ızgara sınırı
+  const inRegion=(q,r)=>Math.abs(q)<=R && Math.abs(r)<=R && Math.abs(q+r)<=R;
+  const LENGTHS = cfg.lengths;
+  const NUM_COLORS = LENGTHS.length;   // ok sayısı config'ten
+
+  let best=null;
+  for(let attempt=0; attempt<400; attempt++){
+    const used = new Map();          // key -> {q,r,colorIdx,pathIdx}
+    const paths = [];
+    const lens = shuffle(LENGTHS.slice());
+    let fail=false;
+
+    for(let c=0;c<NUM_COLORS && !fail;c++){
+      const L = lens[c];
+      let placed=false;
+      for(let tryN=0;tryN<80 && !placed;tryN++){
+        // başlangıç: ilk yol merkeze yakın, sonrakiler kümeye komşu boş hücre
+        let start;
+        if(used.size===0){ start=[ri(-1,1),ri(-1,1)]; }
+        else{
+          const cand=[];
+          for(const u of used.values()) for(const d of DIRS){
+            const q=u.q+d[0], r=u.r+d[1];
+            if(inRegion(q,r) && !used.has(key(q,r))) cand.push([q,r]);
+          }
+          if(!cand.length){break;}
+          start=cand[Math.floor(rnd()*cand.length)];
+        }
+        // self-avoiding random walk
+        const path=[start]; const vis=new Set([key(...start)]);
+        let ok=true;
+        while(path.length<L){
+          const [q,r]=path[path.length-1];
+          const opts=shuffle(DIRS.slice()).map(d=>[q+d[0],r+d[1]])
+            .filter(([a,b])=>inRegion(a,b)&&!used.has(key(a,b))&&!vis.has(key(a,b)));
+          if(!opts.length){ok=false;break;}
+          const nx=opts[0]; path.push(nx); vis.add(key(...nx));
+        }
+        if(!ok) continue;
+        paths.push(path);
+        path.forEach(([q,r],i)=>used.set(key(q,r),{q,r,colorIdx:c,pathIdx:i}));
+        placed=true;
+      }
+      if(!placed) fail=true;
+    }
+    if(fail) continue;
+
+    // segmentleri kur (çözüm hali rot=0 => lokal = dünya yönü)
+    const cells=new Map(); const arrows=[];
+    const dirBetween=(a,b)=>DIRS.findIndex(d=>a[0]+d[0]===b[0]&&a[1]+d[1]===b[1]);
+    for(let c=0;c<NUM_COLORS;c++){
+      const p=paths[c]; const arr={color:c,cells:[],exitDir:0,head:null,tail:null,len:p.length,state:'idle'};
+      for(let i=0;i<p.length;i++){
+        const [q,r]=p[i]; let cell;
+        if(i===0){ cell={q,r,color:c,type:'tail',a:-1,b:dirBetween(p[0],p[1]),rot:0}; arr.tail=key(q,r); }
+        else if(i===p.length-1){
+          const a=dirBetween(p[i],p[i-1]);
+          // uçuş yönü: girişten farklı; %55 düz devam, yoksa rastgele
+          let b = rnd()<0.55 ? opp(a) : -1;
+          if(b<0){ const os=shuffle([0,1,2,3,4,5].filter(d=>d!==a)); b=os[0]; }
+          cell={q,r,color:c,type:'head',a,b,rot:0}; arr.head=key(q,r); arr.exitDir=b;
+        }
+        else cell={q,r,color:c,type:'mid',a:dirBetween(p[i],p[i-1]),b:dirBetween(p[i],p[i+1]),rot:0};
+        cells.set(key(q,r),cell); arr.cells.push(key(q,r));
+      }
+      arrows.push(arr);
+    }
+
+    // palet ataması: aynı renkli iki ok ASLA birbirine değmesin (çizge boyama)
+    const PALN = cfg.colors || 10;
+    const adjA = arrows.map(()=>new Set());
+    for(const cell of cells.values()){
+      for(const dd of DIRS){
+        const nb = cells.get(key(cell.q+dd[0], cell.r+dd[1]));
+        if(nb && nb.color!==cell.color){ adjA[cell.color].add(nb.color); adjA[nb.color].add(cell.color); }
+      }
+    }
+    const palOrder = shuffle([...Array(NUM_COLORS).keys()]);
+    const pal = Array(NUM_COLORS).fill(-1);
+    const useCnt = Array(PALN).fill(0);
+    let colored = true;
+    for(const i of palOrder){
+      const banned = new Set([...adjA[i]].map(j=>pal[j]).filter(p=>p>=0));
+      const opts = shuffle([...Array(PALN).keys()]).filter(p=>!banned.has(p))
+                    .sort((a,b)=>useCnt[a]-useCnt[b]);   // mümkünse önce kullanılmamış renk
+      if(!opts.length){ colored=false; break; }
+      pal[i]=opts[0]; useCnt[opts[0]]++;
+    }
+    if(!colored) continue;
+    arrows.forEach((a,i)=>a.palette=pal[i]);
+
+    // engelleme grafiği (çözüm halinde): c -> ışını üstünde segmenti olan renkler
+    const blockedBy=arrows.map(()=>new Set());
+    for(const arr of arrows){
+      const h=cells.get(arr.head); const v=DIRS[arr.exitDir];
+      let q=h.q,r=h.r;
+      for(let k=0;k<2*R+4;k++){
+        q+=v[0]; r+=v[1];
+        const cc=cells.get(key(q,r));
+        if(cc && cc.color!==arr.color) blockedBy[arr.color].add(cc.color);
+      }
+    }
+    // DAG kontrolü (Kahn)
+    const indeg=arrows.map((_,i)=>blockedBy[i].size);
+    const rev=arrows.map(()=>[]);
+    blockedBy.forEach((s,i)=>s.forEach(b=>rev[b].push(i)));
+    const qq=[]; indeg.forEach((d,i)=>{if(d===0)qq.push(i);});
+    let seen=0; const dq=indeg.slice();
+    while(qq.length){const n=qq.shift();seen++;for(const m of rev[n]){if(--dq[m]===0)qq.push(m);}}
+    if(seen!==NUM_COLORS) continue; // döngü var → çözülemez, tekrar dene
+    const edgeCount=blockedBy.reduce((s,x)=>s+x.size,0);
+    const lvl={cells,arrows,edgeCount,blockedBy};
+    if(!best || edgeCount>best.edgeCount) best=lvl;
+    if(edgeCount>=cfg.minEdges && attempt>25) break; // yeterince bağımlılık var
+  }
+  if(!best) return genLevel(seed+7919,cfg);
+
+  // güvenlik: her okun hücreleri kesintisiz bitişik mi? (aksi halde yeniden üret)
+  for(const arr of best.arrows){
+    for(let i=0;i+1<arr.cells.length;i++){
+      const [q1,r1]=arr.cells[i].split(',').map(Number);
+      const [q2,r2]=arr.cells[i+1].split(',').map(Number);
+      if(!DIRS.some(d=>q1+d[0]===q2&&r1+d[1]===r2)){
+        console.error('bitişiklik hatası, yeniden üretiliyor');
+        return genLevel(seed+31337,cfg);
+      }
+    }
+  }
+
+  // karıştır: her hücre rastgele rot; hiçbir renk baştan bağlı olmasın
+  for(const cell of best.cells.values()){ cell.rot=ri(0,5); }
+  for(const arr of best.arrows){
+    let guard=0;
+    while(traceConnected(best,arr.color).connected && guard++<20){
+      const hc=best.cells.get(arr.head); hc.rot=(hc.rot+ri(1,5))%6;
+    }
+  }
+  // buz mekaniği: cfg.ice kadar renk buz içinde, eşikler 1..ice (çözülebilirlik simülasyonla garanti)
+  if(cfg.ice) assignIce(best, cfg.ice);
+  else best.arrows.forEach(a=>a.freezeAt=0);
+  return best;
+}
+
+function assignIce(level, count){
+  const N=level.arrows.length;
+  const bb=level.blockedBy;
+  const valid=(freeze)=>{
+    const exited=new Set();
+    let guard=0;
+    while(exited.size<N && guard++<N+2){
+      let prog=false;
+      for(let c=0;c<N;c++){
+        if(exited.has(c)) continue;
+        if((freeze[c]||0)>exited.size) continue;             // hâlâ buzlu
+        if([...bb[c]].every(b=>exited.has(b))){ exited.add(c); prog=true; }
+      }
+      if(!prog) return false;
+    }
+    return exited.size===N;
+  };
+  for(let t=0;t<80;t++){
+    const cols=shuffle([...Array(N).keys()]).slice(0,count);
+    const freeze={}; cols.forEach((c,i)=>freeze[c]=i+1);
+    if(valid(freeze)){ level.arrows.forEach(a=>a.freezeAt=freeze[a.color]||0); return; }
+  }
+  // garanti geri dönüş: topolojik sıranın son `count` rengi 1..count eşikleriyle donar
+  const indeg=level.arrows.map((_,i)=>bb[i].size);
+  const rev=level.arrows.map(()=>[]);
+  bb.forEach((st,i)=>st.forEach(b=>rev[b].push(i)));
+  const q=[]; indeg.forEach((d,i)=>{if(d===0)q.push(i);});
+  const order=[]; const dq=indeg.slice();
+  while(q.length){const n=q.shift();order.push(n);for(const m of rev[n]){if(--dq[m]===0)q.push(m);}}
+  const freeze={}; order.slice(-count).forEach((c,i)=>freeze[c]=i+1);
+  level.arrows.forEach(a=>a.freezeAt=freeze[a.color]||0);
+}
+
+// ===== bağlantı takibi =====
+function traceConnected(level, colorIdx){
+  const arr=level.arrows[colorIdx];
+  const tail=level.cells.get(arr.tail);
+  if(!tail) return {connected:false};
+  let cur=tail, out=(tail.b+tail.rot)%6, count=1;
+  const visited=new Set([key(tail.q,tail.r)]);
+  while(true){
+    const nq=cur.q+DIRS[out][0], nr=cur.r+DIRS[out][1];
+    const nk=key(nq,nr);
+    const nx=level.cells.get(nk);
+    if(!nx || nx.color!==colorIdx || visited.has(nk)) return {connected:false};
+    const need=opp(out);
+    if(nx.type==='head'){
+      if((nx.a+nx.rot)%6!==need) return {connected:false};
+      count++;
+      return {connected: count===arr.len, exitDir:(nx.b+nx.rot)%6, headCell:nx};
+    }
+    if(nx.type!=='mid') return {connected:false};
+    const d1=(nx.a+nx.rot)%6, d2=(nx.b+nx.rot)%6;
+    if(d1===need) out=d2; else if(d2===need) out=d1; else return {connected:false};
+    visited.add(nk); cur=nx; count++;
+  }
+}
+
+// uçuş ışını: baş hücreden exitDir yönünde; segmenti duran ilk yabancı renk
+function rayBlockers(level, colorIdx, headCell, exitDir){
+  const v=DIRS[exitDir]; let q=headCell.q, r=headCell.r;
+  const blockers=[]; 
+  for(let k=1;k<=16;k++){
+    q+=v[0]; r+=v[1];
+    const cc=level.cells.get(key(q,r));
+    if(cc && cc.color!==colorIdx && !level.arrows[cc.color].exited)
+      blockers.push({color:cc.color, dist:k, cell:cc});
+  }
+  return blockers;
+}
+//</logic>
+
+// ===== görselleştirme + oyun akışı =====
+const COLORS=[
+  {name:'kırmızı', c:'#d64545'},
+  {name:'mavi',    c:'#3d8bfd'},
+  {name:'yeşil',   c:'#3fae5a'},
+  {name:'turuncu', c:'#ef8f3a'},
+  {name:'mor',     c:'#a259d6'},
+  {name:'turkuaz', c:'#26b5ac'},
+  {name:'pembe',   c:'#e0559b'},
+  {name:'sarı',    c:'#ecc94b'},
+  {name:'kahve',   c:'#96693c'},
+  {name:'lacivert',c:'#5f5fe0'},
+];
+// güvenlik: palet tekrarını asla kabul etme (eski sürümdeki renk çakışması hatasına karşı)
+(function(){
+  const set=new Set(COLORS.map(x=>x.c.toLowerCase()));
+  if(set.size!==COLORS.length) throw new Error('PALET HATASI: tekrar eden renk var');
+})();
+const svg=document.getElementById('board');
+const NS='http://www.w3.org/2000/svg';
+const el=(t,at)=>{const e=document.createElementNS(NS,t);for(const k in at)e.setAttribute(k,at[k]);return e;};
+
+let level=null, levelNum=1, seed=(Date.now()%100000)|0, busyFlights=0;
+let moveCount=0, timerStart=null, timerInt=null;
+const iceDom=new Map();   // key -> buz grubu
+const badgeDom=new Map(); // colorIdx -> {circle,text}
+const exitedCount=()=>level.arrows.filter(a=>a.exited).length;
+const isFrozen=a=>a.freezeAt>0 && !a.unfrozen;
+function fmtTime(ms){const t=Math.floor(ms/1000);return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');}
+function startTimer(){
+  if(timerStart!==null) return;
+  timerStart=Date.now();
+  timerInt=setInterval(()=>{document.getElementById('time').textContent=fmtTime(Date.now()-timerStart);},250);
+}
+function stopTimer(){ if(timerInt){clearInterval(timerInt);timerInt=null;} }
+function resetStats(){
+  stopTimer(); timerStart=null; moveCount=0;
+  document.getElementById('time').textContent='0:00';
+  document.getElementById('moves').textContent='0';
+}
+const cellDom=new Map(); // key -> {g, rotG, angle}
+
+function hexPoints(cx,cy){
+  let p='';
+  for(let i=0;i<6;i++){const a=i*60*Math.PI/180;p+=(cx+ (S-3)*Math.cos(a))+','+(cy+(S-3)*Math.sin(a))+' ';}
+  return p.trim();
+}
+
+function segLocalDrawing(cell,color){
+  // hücre merkezine göre lokal koordinatta çiz; rotG transformu döndürür
+  const g=el('g',{});
+  const pm=d=>{const a=dirAngle(d);return[APO*Math.cos(a),APO*Math.sin(a)];};
+  if(cell.type==='tail'){
+    const [x2,y2]=pm(cell.b);
+    g.appendChild(el('path',{class:'seg',stroke:color,d:`M0,0 L${x2},${y2}`}));
+    g.appendChild(el('circle',{class:'tailDot',cx:0,cy:0,r:6,fill:color}));
+  }else if(cell.type==='mid'){
+    const [x1,y1]=pm(cell.a),[x2,y2]=pm(cell.b);
+    g.appendChild(el('path',{class:'seg',stroke:color,d:`M${x1},${y1} L0,0 L${x2},${y2}`}));
+  }else{ // head
+    const [x1,y1]=pm(cell.a);
+    const a=dirAngle(cell.b), tipD=APO*0.62;
+    const tx=tipD*Math.cos(a), ty=tipD*Math.sin(a);
+    g.appendChild(el('path',{class:'seg',stroke:color,d:`M${x1},${y1} L0,0 L${tx},${ty}`}));
+    g.appendChild(headTri(tx,ty,a,color));
+  }
+  return g;
+}
+function headTri(x,y,ang,color){
+  const w=8.5,l=14;
+  const p1=[x+l*Math.cos(ang), y+l*Math.sin(ang)];
+  const p2=[x+w*Math.cos(ang+Math.PI/2), y+w*Math.sin(ang+Math.PI/2)];
+  const p3=[x+w*Math.cos(ang-Math.PI/2), y+w*Math.sin(ang-Math.PI/2)];
+  return el('path',{class:'segHead',fill:color,d:`M${p1} L${p2} L${p3} Z`});
+}
+
+function render(){
+  svg.innerHTML=''; cellDom.clear();
+  // bbox
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  for(const c of level.cells.values()){
+    const [x,y]=center(c.q,c.r);
+    minX=Math.min(minX,x-S);maxX=Math.max(maxX,x+S);
+    minY=Math.min(minY,y-S);maxY=Math.max(maxY,y+S);
+  }
+  const pad=26;
+  svg.setAttribute('viewBox',`${minX-pad} ${minY-pad} ${maxX-minX+2*pad} ${maxY-minY+2*pad}`);
+
+  const tilesL=el('g',{}), segsL=el('g',{}); 
+  svg.appendChild(tilesL); svg.appendChild(segsL);
+  window._iceLayer=el('g',{}); svg.appendChild(window._iceLayer);
+  window._flyLayer=el('g',{}); svg.appendChild(window._flyLayer);
+  iceDom.clear(); badgeDom.clear();
+
+  for(const [k,cell] of level.cells){
+    const [cx,cy]=center(cell.q,cell.r);
+    const g=el('g',{class:'cellG'});
+    const tcol=COLORS[level.arrows[cell.color].palette].c;
+    g.appendChild(el('polygon',{class:'tile',points:hexPoints(cx,cy),fill:tcol,stroke:tcol}));
+    tilesL.appendChild(g);
+
+    const rotG=el('g',{class:'rotG',style:`transform-origin:${cx}px ${cy}px`});
+    const inner=el('g',{transform:`translate(${cx},${cy})`});
+    inner.appendChild(segLocalDrawing(cell,'#ffffff'));
+    rotG.appendChild(inner);
+    rotG.style.transform=`rotate(${cell.rot*60}deg)`;
+    segsL.appendChild(rotG);
+
+    const st={g,rotG,angle:cell.rot*60};
+    cellDom.set(k,st);
+    g.addEventListener('pointerdown',()=>onTap(k));
+  }
+  renderIce();
+  renderChips();
+}
+
+function renderIce(){
+  for(const arr of level.arrows){
+    if(!(arr.freezeAt>0) || arr.unfrozen) continue;
+    for(const k of arr.cells){
+      const cell=level.cells.get(k);
+      const [cx,cy]=center(cell.q,cell.r);
+      const g=el('g',{class:'iceG'});
+      g.appendChild(el('polygon',{class:'iceHex',points:hexPoints(cx,cy)}));
+      // deterministik küçük çatlaklar
+      const h=((cell.q*53+cell.r*97)%6+6)%6;
+      let d='';
+      for(let i=0;i<3;i++){
+        const a1=dirAngle((h+i*2)%6)+0.35, r1=S*0.26, r2=S*0.70;
+        d+=`M${cx},${cy} L${cx+r1*Math.cos(a1)},${cy+r1*Math.sin(a1)} L${cx+r2*Math.cos(a1+0.28)},${cy+r2*Math.sin(a1+0.28)} `;
+      }
+      g.appendChild(el('path',{class:'crack',d}));
+      window._iceLayer.appendChild(g);
+      iceDom.set(k,g);
+    }
+    // eşik rozeti: okun ortasındaki hücreye
+    const mk=arr.cells[Math.floor(arr.cells.length/2)];
+    const mc=level.cells.get(mk); const [bx,by]=center(mc.q,mc.r);
+    const bg=el('g',{class:'iceG'});
+    bg.appendChild(el('circle',{class:'iceBadge',cx:bx,cy:by,r:13}));
+    const tx=el('text',{class:'iceBadgeT',x:bx,y:by+1}); tx.textContent=arr.freezeAt;
+    bg.appendChild(tx);
+    window._iceLayer.appendChild(bg);
+    badgeDom.set(arr.color,{g:bg,t:tx});
+  }
+}
+
+function updateBadges(){
+  const ec=exitedCount();
+  for(const arr of level.arrows){
+    const b=badgeDom.get(arr.color);
+    if(b && isFrozen(arr)) b.t.textContent=Math.max(0,arr.freezeAt-ec);
+  }
+}
+
+function shakeIce(colorIdx){
+  const arr=level.arrows[colorIdx];
+  arr.cells.forEach(k=>{
+    const g=iceDom.get(k);
+    if(g){ g.classList.remove('shake'); g.getBoundingClientRect(); g.classList.add('shake');
+           setTimeout(()=>g.classList.remove('shake'),340); }
+  });
+}
+
+function breakIce(colorIdx){
+  const arr=level.arrows[colorIdx];
+  const b=badgeDom.get(colorIdx);
+  if(b){ b.g.style.transition='opacity .3s'; b.g.style.opacity='0'; setTimeout(()=>b.g.remove(),320); badgeDom.delete(colorIdx); }
+  arr.cells.forEach((k,idx)=>{
+    const g=iceDom.get(k); if(!g) return;
+    const cell=level.cells.get(k);
+    const [cx,cy]=center(cell.q,cell.r);
+    setTimeout(()=>{
+      g.innerHTML='';
+      for(let i=0;i<6;i++){
+        const a1=i*Math.PI/3, a2=(i+1)*Math.PI/3;
+        const p=el('polygon',{class:'shard',fill:'rgba(212,238,255,.9)',stroke:'rgba(255,255,255,.95)','stroke-width':1,
+          points:`${cx},${cy} ${cx+(S-3)*Math.cos(a1)},${cy+(S-3)*Math.sin(a1)} ${cx+(S-3)*Math.cos(a2)},${cy+(S-3)*Math.sin(a2)}`});
+        g.appendChild(p);
+        const am=(a1+a2)/2, dist=24+((i*7)%14), rot=(i%2? -55: 60);
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{
+          p.style.transform=`translate(${dist*Math.cos(am)}px,${dist*Math.sin(am)}px) rotate(${rot}deg) scale(.5)`;
+          p.style.opacity='0';
+        }));
+      }
+      setTimeout(()=>{g.remove();},760);
+      iceDom.delete(k);
+    }, idx*50);
+  });
+}
+
+function renderChips(){
+  const wrap=document.getElementById('chips'); wrap.innerHTML='';
+  level.arrows.forEach(a=>{
+    const d=document.createElement('div');
+    d.className='chip'+(a.exited?' done':'');
+    d.style.background=COLORS[a.palette].c;
+    d.innerHTML='<span class="ck">✓</span>';
+    if(isFrozen(a)){
+      const f=document.createElement('span');
+      f.className='fr'; f.textContent='❄'+(a.freezeAt-exitedCount());
+      d.appendChild(f);
+    }
+    wrap.appendChild(d);
+  });
+}
+
+function onTap(k){
+  const cell=level.cells.get(k);
+  if(!cell) return;
+  const arr=level.arrows[cell.color];
+  if(isFrozen(arr)){ shakeIce(cell.color); return; }   // buzlu: dönmez, buz titrer
+  if(arr.state!=='idle') return;            // bağlı/bekleyen/uçan kilitli
+  startTimer();                              // ilk döndürmede süre başlar
+  moveCount++; document.getElementById('moves').textContent=moveCount;
+  cell.rot=(cell.rot+1)%6;
+  const st=cellDom.get(k);
+  st.angle+=60;
+  st.rotG.style.transform=`rotate(${st.angle}deg)`;
+  setTimeout(()=>checkColor(cell.color),170);
+}
+
+function checkColor(colorIdx){
+  const arr=level.arrows[colorIdx];
+  if(arr.state!=='idle') return;
+  const res=traceConnected(level,colorIdx);
+  if(!res.connected) return;
+  arr.state='connected';
+  arr._exit={dir:res.exitDir, head:res.headCell};
+  arr.cells.forEach(k=>cellDom.get(k).g.classList.add('locked'));
+  setTimeout(()=>tryLaunch(colorIdx),240);
+}
+
+function buildFlightPath(colorIdx){
+  // dünya koordinatlarında polyline: kuyruk merkezi → kenar ortaları → uç → uzatma
+  const arr=level.arrows[colorIdx];
+  const pts=[];
+  const tail=level.cells.get(arr.tail);
+  let cur=tail, out=(tail.b+tail.rot)%6;
+  pts.push(center(cur.q,cur.r));
+  pts.push(edgeMid(cur.q,cur.r,out));
+  while(true){
+    const nx=level.cells.get(key(cur.q+DIRS[out][0],cur.r+DIRS[out][1]));
+    const [cx,cy]=center(nx.q,nx.r);
+    pts.push([cx,cy]);                      // her hücrede merkezden geç
+    if(nx.type==='head'){
+      const a=dirAngle((nx.b+nx.rot)%6);
+      pts.push([cx+APO*0.62*Math.cos(a), cy+APO*0.62*Math.sin(a)]);
+      break;
+    }
+    const d1=(nx.a+nx.rot)%6,d2=(nx.b+nx.rot)%6;
+    out = (d1===opp(out)) ? d2 : d1;
+    pts.push(edgeMid(nx.q,nx.r,out));
+    cur=nx;
+  }
+  return pts;
+}
+
+function tryLaunch(colorIdx){
+  const arr=level.arrows[colorIdx];
+  if(arr.state!=='connected'&&arr.state!=='waiting') return;
+  const blockers=rayBlockers(level,colorIdx,arr._exit.head,arr._exit.dir);
+  const pts=buildFlightPath(colorIdx);
+  if(blockers.length){
+    arr.state='waiting';
+    bounceAnim(colorIdx,pts,blockers[0]);
+  }else{
+    arr.state='flying'; arr.exited=true; busyFlights++;
+    // veri hücrelerini hemen kaldır (artık başka okları engellemez)
+    const cellKeys=arr.cells.slice();
+    cellKeys.forEach(k=>level.cells.delete(k));
+    // altındaki altıgenleri kuyruk geçtikçe sırayla yok et
+    const perCell=(2*APO)/0.55;   // uçuş hızıyla senkron (ms/hücre)
+    cellKeys.forEach((k,i)=>{
+      setTimeout(()=>{
+        const st=cellDom.get(k);
+        if(st) st.g.querySelector('.tile').classList.add('vanish');
+      }, 120 + i*perCell);
+    });
+    flyAnim(colorIdx,pts,()=>{
+      arr.state='done'; busyFlights--;
+      cellKeys.forEach(k=>{
+        const st=cellDom.get(k);
+        if(st){ st.g.remove(); st.rotG.remove(); cellDom.delete(k); }
+      });
+      // buz eşiği dolan renklerin buzunu kır
+      const ec=exitedCount();
+      level.arrows.forEach(a=>{
+        if(isFrozen(a) && a.freezeAt<=ec){ a.unfrozen=true; breakIce(a.color); }
+      });
+      updateBadges();
+      renderChips();
+      if(level.arrows.every(a=>a.exited)){ setTimeout(showWin,500); return; }
+      // bekleyenleri kademeli tetikle
+      let delay=180;
+      level.arrows.forEach(a=>{
+        if(a.state==='waiting'){ a.state='connected'; setTimeout(()=>tryLaunch(a.color),delay); delay+=260; }
+      });
+    });
+  }
+}
+
+function makeFlightEls(colorIdx,pts,extLen){
+  const arr=level.arrows[colorIdx];
+  const color='#ffffff';
+  const ang=dirAngle(arr._exit.dir);
+  const last=pts[pts.length-1];
+  const extPts=pts.concat([[last[0]+extLen*Math.cos(ang), last[1]+extLen*Math.sin(ang)]]);
+  const d='M'+extPts.map(p=>p[0]+','+p[1]).join(' L');
+  const path=el('path',{class:'fly',stroke:color,d});
+  const total=(()=>{window._flyLayer.appendChild(path);return path.getTotalLength();})();
+  const ext=extLen;
+  const bodyLen=total-ext;
+  path.setAttribute('stroke-dasharray',`${bodyLen} ${total+bodyLen}`);
+  const tri=headTri(0,0,0,color); // konumu RAF günceller
+  window._flyLayer.appendChild(tri);
+  const dot=el('circle',{r:6,fill:color}); window._flyLayer.appendChild(dot);
+  // hücre segmentlerini gizle (yerine overlay)
+  arr.cells.forEach(k=>{const st=cellDom.get(k); if(st.rotG) st.rotG.style.visibility='hidden';});
+  const setOffset=off=>{
+    path.setAttribute('stroke-dashoffset',off);
+    const tipL=Math.min(bodyLen-off,total);
+    const tailL=Math.max(-off,0);
+    const p=path.getPointAtLength(Math.max(0,Math.min(tipL,total)));
+    const p2=path.getPointAtLength(Math.max(0,Math.min(tipL,total)-1));
+    const a=Math.atan2(p.y-p2.y,p.x-p2.x)||ang;
+    tri.setAttribute('transform',`translate(${p.x},${p.y}) rotate(${a*180/Math.PI})`);
+    tri.setAttribute('d',headTriD());
+    const tp=path.getPointAtLength(Math.max(0,Math.min(tailL,total)));
+    dot.setAttribute('cx',tp.x); dot.setAttribute('cy',tp.y);
+    dot.style.opacity = tailL>=total-2 ? 0 : 1;
+  };
+  function headTriD(){const w=8.5,l=14;return `M${l},0 L0,${w} L0,${-w} Z`;}
+  return {path,tri,dot,bodyLen,total,setOffset,
+    cleanup(showCells){
+      path.remove();tri.remove();dot.remove();
+      if(showCells) arr.cells.forEach(k=>{const st=cellDom.get(k); if(st.rotG) st.rotG.style.visibility='visible';});
+    }};
+}
+
+function flyAnim(colorIdx,pts,onDone){
+  const f=makeFlightEls(colorIdx,pts,900);
+  const dist=f.total;               // offset 0 → -dist? dash ileri kayması için negatif ofset
+  const speed=0.55;                 // px/ms
+  let t0=null;
+  function step(ts){
+    if(t0===null)t0=ts;
+    const d=Math.min((ts-t0)*speed, dist);
+    f.setOffset(-d);
+    if(d<dist) requestAnimationFrame(step);
+    else { f.cleanup(false); onDone(); }
+  }
+  requestAnimationFrame(step);
+}
+
+function bounceAnim(colorIdx,pts,blocker){
+  const hitDist=Math.max(10, blocker.dist*Math.sqrt(3)*S - S*1.05 - APO*0.62);
+  const f=makeFlightEls(colorIdx,pts,hitDist+40);
+  const dur=560;
+  let t0=null;
+  function step(ts){
+    if(t0===null)t0=ts;
+    const t=Math.min((ts-t0)/dur,1);
+    // ileri-geri: sin eğrisi (çarp ve geri dön)
+    f.setOffset(-Math.max(0,hitDist*Math.sin(Math.PI*t)));
+    if(t<1) requestAnimationFrame(step);
+    else { f.cleanup(true); pulseWaiting(colorIdx); }
+  }
+  requestAnimationFrame(step);
+}
+
+function pulseWaiting(colorIdx){
+  // tamamlandı ama çıkamıyor: doğru yapıldığı belli olsun diye altındaki altıgenler görünmez olur
+  const arr=level.arrows[colorIdx];
+  arr.cells.forEach(k=>{
+    const st=cellDom.get(k);
+    if(st) st.g.querySelector('.tile').classList.add('clear');
+  });
+}
+
+function showWin(){
+  stopTimer();
+  const t=timerStart?fmtTime(Date.now()-timerStart):'0:00';
+  document.getElementById('winStats').textContent=`${moveCount} hamle · ${t}`;
+  document.getElementById('winOv').style.display='flex';
+}
+
+function newLevel(bump){
+  if(bump) levelNum++;
+  document.getElementById('lvl').textContent=levelNum;
+  document.getElementById('winOv').style.display='none';
+  resetStats();
+  seed=(seed*48271+levelNum*997)%2147483647;
+  level=genLevel(seed, levelConfig(levelNum));
+  level.arrows.forEach(a=>{a.state='idle';a.exited=false;});
+  render();
+}
+function levelConfig(n){
+  if(n<=1) return {R:3, lengths:[3,3,4],             minEdges:1}; // giriş: 3 kısa ok
+  if(n===2) return {R:4, lengths:[3,4,5,6,6],        minEdges:2};
+  if(n<=4)  return {R:5, lengths:[3,4,5,6,6,7],      minEdges:3, ice:3}; // 6 renk, 3'ü buzlu
+  return          {R:7, lengths:[3,3,4,4,5,5,6,6,7,7,8,8,9,10], minEdges:6, ice:3, colors:10};
+}
+document.getElementById('nextBtn').addEventListener('click',()=>newLevel(true));
+document.getElementById('regen').addEventListener('click',()=>newLevel(false));
+
+if(typeof document!=='undefined' && document.getElementById('board')) newLevel(false);
+</script>
+</body>
+</html>

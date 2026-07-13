@@ -1,0 +1,17 @@
+{
+    "name": "ArrowRotate.Generation",
+    "rootNamespace": "ArrowRotate.Generation",
+    "references": [
+        "ArrowRotate.Core",
+        "ArrowRotate.Logic"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

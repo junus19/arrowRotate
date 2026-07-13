@@ -297,11 +297,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 950319038}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fd49f09c100b44ada882242746496830, type: 3}
+  m_Script: {fileID: 11500000, guid: 0d15a372404964fd9931d22857f8c9b5, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.Casual.GameManager
+  m_EditorClassIdentifier: Assembly-CSharp::ArrowRotate.Integration.HexaGameManager
   _gameData: {fileID: 11400000, guid: 21275ba2f0a934aceb211a7e7a1d355e, type: 2}
-  _gameConfig: {fileID: 11400000, guid: dce83e0b1ee0948a9915256260474c19, type: 2}
+  _gameConfig: {fileID: 11400000, guid: d3eb790d6c0f04fce9e4446393c388ee, type: 2}
   _settingsData: {fileID: 11400000, guid: 764362a4085404ca2b32b42f67ab51ca, type: 2}
   _feedbackData: {fileID: 11400000, guid: 578e66f2073434a87baebb5d5b90cb6e, type: 2}
   _gameMetaData: {fileID: 11400000, guid: d9e868c4ddbc54800afb06ec48740deb, type: 2}

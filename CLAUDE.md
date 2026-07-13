@@ -15,6 +15,31 @@ Bu proje 2 developer tarafından geliştirilmektedir. Her iki developer da ayrı
 
 ---
 
+## Oyun: Hexa Arrows (Arrow Rotate)
+
+Hexagon döndürme bulmacası. **Sürükleme yok** — tek etkileşim taşa dokunmak (60° saat yönü dönüş). Renkli ok segmentlerini (tail/mid/head) kuyruktan uca bağla; bağlanan ok otomatik uçar, önü tıkalıysa çarpıp bekler. Buz mekaniği: 3 ok buzlu başlar, toplam çıkış sayısı eşiğe (1/2/3) ulaşınca kırılır. Tüm oklar çıkınca level biter.
+
+**Bağlayıcı kaynaklar (bu sırayla):**
+1. `.claude/skills/hexa-arrows-unity/SKILL.md` — port spesifikasyonu (veri modeli, algoritmalar, zorluk tablosu, görsel oranlar, zorunlu testler)
+2. `.claude/skills/hexa-arrows-unity/reference/hexa-arrows-prototype.html` — davranışta nihai kaynak (source of truth)
+3. `PLAN.md` — faz planı ve yürütme kararları
+
+**Değişmez kurallar:**
+- `arrowId` (mantık kimliği) ≠ `palette` (görsel renk). TÜM mantık arrowId üzerinden; palette yalnız boyama. Aynı paletteki iki ok hiçbir hücrede komşu olamaz.
+- Mantık katmanı (`Scripts/Core`, `Scripts/Logic`, `Scripts/Generation`) MonoBehaviour'suz saf C#; Unity API kullanmaz, EditMode testlidir. SKILL.md §10'daki 6 test sınıfı her zaman yeşil kalmalı.
+- Mid segment görseli DAİMA merkezden kırık çizgi (kenar ortalarını düz bağlamak yasak).
+- Uçuşa başlayan okun hücreleri veri katmanından ANINDA silinir (uçan ok engel sayılmaz).
+- Hücre erişimi `Dictionary<(int q,int r), Cell>`; string key yasak.
+- Level = seed + config (`HexaLevelData : LevelData`); grid runtime'da deterministik üretilir. Hata raporlarında seed loglanır.
+
+**Oyun kodu yerleşimi:** her şey `Assets/_Arrow Rotate/` altında; Gamebrain'e yalnızca `Scripts/Integration/` içinden subclass ile bağlanılır (`HexaGameManager : GameManager`, `HexaGameState_Gameplay : GameState_Gameplay`, `HexaLevelData : LevelData`). Framework koduna dokunulmaz.
+
+**Oyun event'leri** (`Scripts/Integration/Events/`): `HexaLevelStartedEvent`, `HexaRotateEvent`, `HexaArrowConnectedEvent`, `HexaArrowExitedEvent`, `HexaArrowBlockedEvent`, `HexaIceBrokenEvent`, `HexaLevelWonEvent`, `HexaTutorialEvent`. Ses/haptik yalnız `FxRequestEvent` ile.
+
+**Sahiplik ayrımı:** Dev A = Core/Logic/Generation/testler/Editor tooling/level içeriği · Dev B = Board/Input/Animation/GUI/Gameplay/Integration + sahne-prefab sahipliği. `Cell`/`Arrow` modeli ve event imzaları ortak sözleşmedir — değişiklik önce bu dosyaya yazılır.
+
+---
+
 ## Project Layout
 
 ```

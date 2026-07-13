@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bb983c45f474273aecfb367797f42e2, type: 3}
+  m_Name: Hexa Game Config
+  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.Casual.GameConfig
+  _gameMode: 0
+  _levels:
+  - {fileID: 11400000, guid: 1df70281bb43b46578449ed115449fef, type: 2}
+  - {fileID: 11400000, guid: 3d156c64989644d2ba2e5afd6e2a42d8, type: 2}
+  - {fileID: 11400000, guid: cb5d93607278043f8a70a605e5dd8755, type: 2}
+  - {fileID: 11400000, guid: 2bc9c2404df98479d9219ea0d4e73834, type: 2}
+  - {fileID: 11400000, guid: 9d7c274a30ac14f98bfa03c8e33acf6c, type: 2}
+  - {fileID: 11400000, guid: 424b401c789d24645b97a4819f2716be, type: 2}
+  - {fileID: 11400000, guid: 69b9d504928244c309e8ec47219a52e5, type: 2}
+  - {fileID: 11400000, guid: b8bfcbcaf7e0a42c3bf4ddde44a6dd74, type: 2}
+  - {fileID: 11400000, guid: b343cc1b013014dcfacd55682d620aa4, type: 2}
+  - {fileID: 11400000, guid: c53647d9accc34719beafa105b94557a, type: 2}
+  _testLevel: {fileID: 0}
