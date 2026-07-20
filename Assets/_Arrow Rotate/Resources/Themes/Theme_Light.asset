@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be4001e73f2af44beb7ecf7714f66bfb, type: 3}
+  m_Name: Theme_Light
+  m_EditorClassIdentifier: Assembly-CSharp::ArrowRotate.View.HexaThemeData
+  CameraBackground: {r: 0.9098039, g: 0.9137255, b: 0.9607843, a: 1}
+  EmptyHex: {r: 0.86, g: 0.87, b: 0.93, a: 1}
+  EmptyDot: {r: 0.72, g: 0.73, b: 0.82, a: 1}
+  GridLine: {r: 0.8, g: 0.81, b: 0.89, a: 1}
+  SegmentShadow: {r: 0.35, g: 0.35, b: 0.42, a: 0.65}
+  IceFill: {r: 0.7764706, g: 0.9019608, b: 1, a: 0.62}
+  IceEdge: {r: 0.9411765, g: 0.98039216, b: 1, a: 0.95}
+  IceCrack: {r: 1, g: 1, b: 1, a: 0.75}
+  IceBadgeBg: {r: 0.78431374, g: 0.9098039, b: 1, a: 1}
+  IceBadgeText: {r: 0.13, g: 0.19, b: 0.43, a: 1}

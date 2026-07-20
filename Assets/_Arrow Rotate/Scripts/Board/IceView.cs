@@ -13,11 +13,8 @@ namespace ArrowRotate.View
     /// </summary>
     public class IceView : MonoBehaviour
     {
-        private static readonly Color Fill = new Color(198f / 255f, 230f / 255f, 1f, 0.62f);
-        private static readonly Color Edge = new Color(240f / 255f, 250f / 255f, 1f, 0.95f);
-        private static readonly Color Crack = new Color(1f, 1f, 1f, 0.75f);
-        private static readonly Color BadgeBg = new Color(200f / 255f, 232f / 255f, 1f, 1f);
-        private static readonly Color BadgeText = new Color(0.13f, 0.19f, 0.43f, 1f);
+        // Buz renkleri temadan okunur (HexaThemeData.Active), Create'te doldurulur.
+        private Color _fill, _edge, _crack, _badgeBg, _badgeTextColor;
 
         private const float IceZ = -0.15f;
         private const float BadgeZ = -0.18f;
@@ -35,6 +32,13 @@ namespace ArrowRotate.View
             var view = go.AddComponent<IceView>();
             view._s = s;
 
+            var theme = HexaThemeData.Active;
+            view._fill = theme.IceFill;
+            view._edge = theme.IceEdge;
+            view._crack = theme.IceCrack;
+            view._badgeBg = theme.IceBadgeBg;
+            view._badgeTextColor = theme.IceBadgeText;
+
             foreach (var pos in arrow.Cells)
             {
                 var cell = level.GetCell(pos);
@@ -45,7 +49,7 @@ namespace ArrowRotate.View
                 tileRoot.SetParent(go.transform, false);
                 tileRoot.localPosition = center;
 
-                MeshFactory.NewMeshObject("Fill", MeshFactory.Hex(s * 0.91f), Fill, tileRoot, Vector3.zero);
+                MeshFactory.NewMeshObject("Fill", MeshFactory.Hex(s * 0.91f), view._fill, tileRoot, Vector3.zero);
                 view.AddOutline(tileRoot, s);
                 view.AddCracks(tileRoot, s, cell.Q * 73856093 ^ cell.R * 19349663);
 
@@ -68,8 +72,8 @@ namespace ArrowRotate.View
             var lr = go.AddComponent<LineRenderer>();
             lr.useWorldSpace = false;
             lr.material = MeshFactory.SharedMaterial;
-            lr.startColor = Edge;
-            lr.endColor = Edge;
+            lr.startColor = _edge;
+            lr.endColor = _edge;
             lr.widthMultiplier = 0.035f * s;
             lr.loop = true;
             lr.positionCount = 6;
@@ -92,8 +96,8 @@ namespace ArrowRotate.View
                 var lr = go.AddComponent<LineRenderer>();
                 lr.useWorldSpace = false;
                 lr.material = MeshFactory.SharedMaterial;
-                lr.startColor = Crack;
-                lr.endColor = Crack;
+                lr.startColor = _crack;
+                lr.endColor = _crack;
                 lr.widthMultiplier = 0.02f * s;
                 lr.positionCount = 3;
                 float a0 = (float)(rng.NextDouble() * Mathf.PI * 2f);
@@ -109,7 +113,7 @@ namespace ArrowRotate.View
 
         private void BuildBadge(Vector3 pos, float s, int remaining)
         {
-            var badgeGo = MeshFactory.NewMeshObject("Badge", MeshFactory.Circle(0.34f * s), BadgeBg, transform, pos);
+            var badgeGo = MeshFactory.NewMeshObject("Badge", MeshFactory.Circle(0.34f * s), _badgeBg, transform, pos);
             _badge = badgeGo.transform;
 
             var textGo = new GameObject("Num");
@@ -124,7 +128,7 @@ namespace ArrowRotate.View
             _badgeText.characterSize = 0.011f * s;
             _badgeText.anchor = TextAnchor.MiddleCenter;
             _badgeText.alignment = TextAlignment.Center;
-            _badgeText.color = BadgeText;
+            _badgeText.color = _badgeTextColor;
         }
 
         /// <summary>Kalan gereken çıkış sayısı (freezeAt − exitedCount).</summary>
@@ -189,11 +193,11 @@ namespace ArrowRotate.View
             while (t < 1f)
             {
                 t = Mathf.Min(1f, t + Time.deltaTime / 0.3f);
-                var c = BadgeBg; c.a = 1f - t;
+                var c = _badgeBg; c.a = 1f - t;
                 MeshFactory.SetColor(mr, c);
                 if (_badgeText != null)
                 {
-                    var tc = BadgeText; tc.a = 1f - t;
+                    var tc = _badgeTextColor; tc.a = 1f - t;
                     _badgeText.color = tc;
                 }
                 yield return null;
@@ -216,7 +220,7 @@ namespace ArrowRotate.View
                 mesh.triangles = new[] { 0, 2, 1 };
                 mesh.RecalculateBounds();
 
-                var shard = MeshFactory.NewMeshObject("Shard", mesh, Fill, transform, center);
+                var shard = MeshFactory.NewMeshObject("Shard", mesh, _fill, transform, center);
                 var dir = ((c1 + c2) * 0.5f).normalized;
                 float dist = _s * (0.7f + 0.066f * ((tileIndex * 7 + i * 3) % 7)); // ~0.7-1.1·S deterministik
                 float rot = (i % 2 == 0 ? 1f : -1f) * (55f + (i * 13 + tileIndex * 5) % 6);
@@ -237,7 +241,7 @@ namespace ArrowRotate.View
                 shard.transform.localPosition = start + delta * e;
                 shard.transform.localRotation = Quaternion.Euler(0f, 0f, rotDeg * e);
                 shard.transform.localScale = Vector3.one * Mathf.Lerp(1f, 0.5f, e);
-                var c = Fill; c.a = Fill.a * (1f - t);
+                var c = _fill; c.a = _fill.a * (1f - t);
                 MeshFactory.SetColor(mr, c);
                 yield return null;
             }

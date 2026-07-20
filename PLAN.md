@@ -174,6 +174,13 @@ Ses/haptik: yalnızca `FxRequestEvent` (Rotate / Connect / Launch / Bounce / Ice
 - [x] `HexaLevelEditorWindow` (**Arrow Rotate ▸ Level Editor**, arrowJam editör paritesi): level listesi (GameConfig checkbox, rename/duplicate/sil) · hex canvas (prototip koordinatları, rot uygulanmış segment çizimi, buz katmanı+rozet, move hayaleti, draw önizleme) · araçlar: Draw (kuyruk→head), Erase (tüm ok), Move (tüm ok), Rotate, Recolor, Ice, Edit (denetçi + uçuş yönü döndürme) · "Paletleri Ata" çizge boyaması · Scramble (bağlı-kalmaz garantili) / Çöz · Random Fill (zorluk+seed → üretici) · canlı doğrulama (yapı, bitişiklik, çözülebilirlik, karışıklık, palet komşuluğu, buz DAG). Undo destekli; doğrulama ve Undo editörde test edildi.
 - Seed Browser durur (toplu tarama/ayıklama); bake artık hücrelere yazar.
 
+### Ek iş — 3D görünüm modu ✅ (2026-07-17)
+- [x] `BoardView.ViewMode` (Flat2D/Depth3D) — 2D mod korunarak 3D eklendi; Game + HexaSandbox sahneleri Depth3D'ye alındı.
+- [x] Taşlar `Models/hexagon.fbx` (kullanıcının modeli): otomatik ölçek/yönelim (`TileView.Create3D`), URP Lit Transparent paylaşılan malzeme (fade'ler 3D'de çalışır), MPB `_BaseColor`.
+- [x] Runtime ışık + Flat ambient (pozlama dengesi ~1.0), kamera 24° üstten eğim, `TapController` düzlem-raycast (31/31 hücre doğrulandı).
+- [x] Oklar karar gereği düz sprite katmanı kaldı (kabartma yok — referans görsellerle uyumlu).
+- Referans stil: Hexa Sort / Combo Blast benzeri puck taşlar; ekran görüntüleriyle karşılaştırıldı. Gölge/arka plan cilası Faz 8'e.
+
 ### Faz 8 — SDK, build, cila (2 gün + süreklilik)
 - [ ] Native SDK'lar import edilmemiş: MAX (AppLovin), Adjust, GameAnalytics, Firebase + scripting define'ları (`MAX_ENABLED`, `ADJUST_ENABLED`…).
 - [ ] Analytics şeması: level_start/win (seed loglanır — spec §11 repro önerisi), rotate sayısı, süre, buz kırılmaları, blocked sayısı.

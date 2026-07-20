@@ -81,20 +81,18 @@ namespace ArrowRotate.EditorTools
 
         private void DrawPaletteSwatches()
         {
-            var palettes = ArrowRotate.View.HexaPalette.Palettes;
-            for (int row = 0; row < 2; row++)
+            var palettes = ArrowRotate.View.HexaPalette.Palettes; // Color Database'ten (dinamik uzunluk)
+            const int perRow = 5;
+            for (int i = 0; i < palettes.Length; i++)
             {
-                EditorGUILayout.BeginHorizontal();
-                for (int i = row * 5; i < row * 5 + 5; i++)
-                {
-                    var prev = GUI.backgroundColor;
-                    GUI.backgroundColor = palettes[i];
-                    string label = _paintPalette == i ? "✓" : " ";
-                    if (GUILayout.Button(label, GUILayout.Width(42), GUILayout.Height(24)))
-                        _paintPalette = i;
-                    GUI.backgroundColor = prev;
-                }
-                EditorGUILayout.EndHorizontal();
+                if (i % perRow == 0) EditorGUILayout.BeginHorizontal();
+                var prev = GUI.backgroundColor;
+                GUI.backgroundColor = palettes[i];
+                string label = _paintPalette == i ? "✓" : " ";
+                if (GUILayout.Button(label, GUILayout.Width(42), GUILayout.Height(24)))
+                    _paintPalette = i;
+                GUI.backgroundColor = prev;
+                if (i % perRow == perRow - 1 || i == palettes.Length - 1) EditorGUILayout.EndHorizontal();
             }
             GUILayout.Label($"Palet {_paintPalette}", EditorStyles.centeredGreyMiniLabel);
         }

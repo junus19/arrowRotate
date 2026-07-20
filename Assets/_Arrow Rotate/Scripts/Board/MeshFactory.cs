@@ -100,8 +100,34 @@ namespace ArrowRotate.View
             mr.GetPropertyBlock(mpb);
             // MPB renkleri gamma düzeltmesinden geçmez; Linear space'te sRGB→linear çevir
             var c = QualitySettings.activeColorSpace == ColorSpace.Linear ? color.linear : color;
-            mpb.SetColor("_Color", c);
+            mpb.SetColor("_Color", c);      // Sprites/Default (2D)
+            mpb.SetColor("_BaseColor", c);  // URP Lit (3D taşlar)
             mr.SetPropertyBlock(mpb);
+        }
+
+        private static Material _lit3DTransparent;
+
+        /// <summary>3D taşlar için paylaşılan URP Lit malzeme — alpha fade'ler için Transparent surface.</summary>
+        public static Material Lit3DTransparent
+        {
+            get
+            {
+                if (_lit3DTransparent == null)
+                {
+                    var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                    mat.SetFloat("_Surface", 1f); // Transparent
+                    mat.SetOverrideTag("RenderType", "Transparent");
+                    mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    mat.SetFloat("_ZWrite", 1f); // konveks puck — iç yüzey artefaktlarını önler
+                    mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                    mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                    mat.SetFloat("_Smoothness", 0.15f);
+                    mat.SetFloat("_Metallic", 0f);
+                    _lit3DTransparent = mat;
+                }
+                return _lit3DTransparent;
+            }
         }
     }
 }

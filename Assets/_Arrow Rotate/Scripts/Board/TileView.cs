@@ -11,9 +11,66 @@ namespace ArrowRotate.View
     public class TileView : MonoBehaviour
     {
         private MeshRenderer _renderer;
+        private Shapes.RegularPolygon _poly; // Shapes2D modda dolu; renk/alfa buradan uygulanır
         private Color _color;
         private float _alpha = 1f;
         private Coroutine _fade;
+
+        /// <summary>Shapes2D: yuvarlatılmış RegularPolygon hexagon (flat-top, köşeler 0°/60°…).</summary>
+        public static TileView CreateShapes(Transform parent, Vector3 pos, float s, Color color)
+        {
+            var go = new GameObject("Tile");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = pos;
+
+            var poly = go.AddComponent<Shapes.RegularPolygon>();
+            poly.Geometry = Shapes.RegularPolygonGeometry.Flat2D;
+            poly.Sides = 6;
+            poly.Angle = 0f;              // MeshFactory.Hex ile aynı: köşe 0°'de → flat-top
+            poly.Radius = s * 0.985f;     // roundness içeri yediği için 2D inset'e denk gelir
+            poly.Roundness = 0.14f;       // referanstaki hafif yuvarlak köşeler
+            poly.Color = color;
+            poly.SortingOrder = 0;
+
+            var view = go.AddComponent<TileView>();
+            view._poly = poly;
+            view._color = color;
+            return view;
+        }
+
+        /// <summary>
+        /// 3D mod: hexagon.fbx taş olarak (model XZ düzleminde yatar, köşeler local Z'de,
+        /// pivot üst yüzeyde). X'te -90° → üst yüz kameraya (-Z), gövde +Z'ye (derinlik);
+        /// ekran düzleminde -30° → flat-top hizası (köşeler 0°,60°,...). Ölçek bounds'tan otomatik.
+        /// </summary>
+        public static TileView Create3D(Transform parent, Vector3 pos, float s, Color color, GameObject model)
+        {
+            var go = new GameObject("Tile");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = pos;
+
+            var inst = Instantiate(model, go.transform, false);
+            inst.transform.localRotation =
+                Quaternion.AngleAxis(-30f, Vector3.forward) * Quaternion.AngleAxis(-90f, Vector3.right);
+
+            var renderer = inst.GetComponentInChildren<MeshRenderer>();
+            var meshFilter = inst.GetComponentInChildren<MeshFilter>();
+            float modelCornerRadius = meshFilter.sharedMesh.bounds.size.z * 0.5f; // köşeler local Z'de
+            float targetRadius = s * 0.91f; // 2D inset ile aynı görsel boşluk
+            float fit = targetRadius / Mathf.Max(0.0001f, modelCornerRadius);
+            // local Y = kalınlık ekseni; hafif kalınlaştırma alt kenar dudağını belirginleştirir
+            inst.transform.localScale = new Vector3(fit, fit * 1.25f, fit);
+
+            renderer.sharedMaterial = MeshFactory.Lit3DTransparent;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+
+            var view = go.AddComponent<TileView>();
+            view._renderer = renderer;
+            view._color = color;
+            MeshFactory.SetColor(renderer, color);
+            return view;
+        }
 
         public static TileView Create(Transform parent, Vector3 pos, float s, Color color)
         {
@@ -80,7 +137,8 @@ namespace ArrowRotate.View
             _alpha = a;
             var c = _color;
             c.a = a;
-            MeshFactory.SetColor(_renderer, c);
+            if (_poly != null) _poly.Color = c;
+            else MeshFactory.SetColor(_renderer, c);
         }
     }
 }

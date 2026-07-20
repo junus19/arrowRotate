@@ -34,8 +34,11 @@ namespace ArrowRotate.View
 
         private void Tap(Vector3 screenPos)
         {
-            var world = Cam.ScreenToWorldPoint(screenPos);
-            Manager.OnTapWorld(world);
+            // z=0 board düzlemine ışın kesişimi — dik ve eğik (3D mod) kamerada aynı çalışır
+            var ray = Cam.ScreenPointToRay(screenPos);
+            if (Mathf.Abs(ray.direction.z) < 1e-5f) return;
+            float t = -ray.origin.z / ray.direction.z;
+            Manager.OnTapWorld(ray.GetPoint(t));
         }
     }
 }
