@@ -28,13 +28,33 @@ namespace ArrowRotate.View
         [Tooltip("Depth3D modda taş modeli (hexagon.fbx)")]
         public GameObject TileModel3D;
 
+        [Header("Depth3D XZ (taş mesh EP'den; segmentler prosedürel tek parça)")]
+        [Tooltip("Hexagon taş mesh (XZ/Y-up, köşe yarıçapı ~1)")]
+        public Mesh HexMesh3D;
+        [Tooltip("Taş materyali — YEDEK. Materyaller artık öncelikle HexaColorDatabase'ten okunur; DB boşsa buraya, o da boşsa Lit3DTransparent'a düşer.")]
+        public Material TileMaterial3D;
+        [Tooltip("Ok materyali — YEDEK. Öncelik HexaColorDatabase.SegmentMaterial; boşsa buraya, o da boşsa Lit3DTransparent.")]
+        public Material ArrowMaterial3D;
+        [Tooltip("Taşlar arası BOŞLUK (S oranı). BÜYÜK değer = büyük boşluk. Footprint = 1 − TileGap. Hücre aralığı sabit (segment bağlantıları etkilenmez); taşları küçültüp aralarında görsel gap açar (örtüşme/z-fight'ı önler). 0 = mesh'in doğal boşluğu, 0.1 belirgin boşluk.")]
+        [Range(0f, 0.6f)] public float TileGap = 0f;
+        [Tooltip("Taş kalınlık (Y) çarpanı — puck yüksekliği. Mesh merkez pivotlu, hem üste hem alta büyür. 1 = mesh'in doğal kalınlığı, 1.5 = %50 kalın.")]
+        public float TileThicknessY = 1f;
+        [Tooltip("Segment/ok'u hexagon üst yüzeyinin ne kadar ALTINA gömer (mesh birimi × S). 0 = yüzeyde; ~0.12 hafif gömülü. Segment yüksekliği ≈0.30.")]
+        public float SegmentSink = 0.12f;
+        [Tooltip("Segment/ok'u taş üstünde EKSTRA aşağı alan dünya-Y offset'i (× S). Kalınlık ince ayarı için. 0 = kapalı.")]
+        public float SegmentDropY = 0f;
+        [Tooltip("XZ'de gölge: ışığı Soft gölgeye zorlar + taş/segmentleri caster yapar. Zemine (altındaki plane) gölge düşmesi için AÇIK olmalı. Not: taş materyali Transparent'sa gölge atmaz — opak master material kullan.")]
+        public bool CastShadows3D = true;
+
         [Header("Renk & Tema")]
         [Tooltip("Aktif tema (boşsa Resources/Themes/Theme_Default). Build'de HexaThemeData.Active olur.")]
         public HexaThemeData Theme;
 
         [Header("3D Kamera / Işık (prefab'lardan okunur — düzenle, yansır)")]
-        [Tooltip("Board Light Prefab 2 — olduğu gibi instantiate edilir (açı/şiddet/renk prefab'dan). Boşsa koddan varsayılan ışık.")]
+        [Tooltip("Ana yönlü ışık (Board Light Prefab 2) — olduğu gibi instantiate edilir (açı/şiddet/renk prefab'dan). Gölge kaynağı budur. Boşsa koddan varsayılan ışık.")]
         public GameObject LightPrefab;
+        [Tooltip("Dolgu/helper ışık (helperLight) — olduğu gibi instantiate edilir. Gölge atmaz (dolgu), CastShadows3D ONU ETKİLEMEZ. Boşsa eklenmez.")]
+        public GameObject HelperLightPrefab;
         [Tooltip("Camera Prefab — tilt (X) ve arka plan rengi buradan okunur. Boşsa aşağıdaki değerler.")]
         public GameObject CameraPrefab;
         [Tooltip("CameraPrefab boşsa kullanılacak X eğimi (derece)")]
@@ -54,9 +74,15 @@ namespace ArrowRotate.View
 
             if (Theme != null) HexaThemeData.Active = Theme; // inspector'daki tema aktif olur
 
-            bool use3D = ViewMode == HexaViewMode.Depth3D && TileModel3D != null;
+            bool xz = ViewMode == HexaViewMode.Depth3D && HexMesh3D != null; // EP mesh'li gerçek XZ
+            bool useFbx3D = ViewMode == HexaViewMode.Depth3D && !xz && TileModel3D != null; // eski fbx (fallback)
             bool useShapes = ViewMode == HexaViewMode.Shapes2D;
-            if (use3D) Setup3DLighting();
+            if (xz || useFbx3D) Setup3DLighting();
+
+            var db = HexaColorDatabase.Active;
+            // Ok/segment materyali: DB > BoardView yedeği > Lit3DTransparent
+            var segMat = db.SegmentMaterial != null ? db.SegmentMaterial
+                       : (ArrowMaterial3D != null ? ArrowMaterial3D : MeshFactory.Lit3DTransparent);
 
             foreach (var arrow in level.Arrows)
             {
@@ -65,15 +91,32 @@ namespace ArrowRotate.View
                 {
                     var cell = level.GetCell(pos);
                     var (x, y) = HexMetrics.Center(cell.Q, cell.R, CellSize);
-                    _tiles[pos] = use3D
-                        ? TileView.Create3D(transform, new Vector3(x, y, TileZ), CellSize, color, TileModel3D)
-                        : useShapes
+                    if (xz)
+                    {
+                        // Taş materyali: DB (master/per-color) > BoardView yedeği (Create3DXZ null'da Lit3DTransparent'a düşer)
+                        var tileMat = db.HexMaterialForPalette(arrow.Palette) ?? TileMaterial3D;
+                        float tileFootprint = Mathf.Clamp(1f - TileGap, 0.2f, 2f); // boşluk arttıkça taş küçülür
+                        var tv = TileView.Create3DXZ(transform, new Vector3(x, 0f, y), CellSize, color, HexMesh3D, tileMat, tileFootprint, TileThicknessY);
+                        var sv = SegmentView.Create3DXZ(transform, new Vector3(x, SurfaceY, y), CellSize, cell, segMat);
+                        if (CastShadows3D) { tv.SetCastShadows(true); sv.SetCastShadows(true); }
+                        _tiles[pos] = tv;
+                        _segments[pos] = sv;
+                    }
+                    else if (useFbx3D)
+                    {
+                        _tiles[pos] = TileView.Create3D(transform, new Vector3(x, y, TileZ), CellSize, color, TileModel3D);
+                        _segments[pos] = SegmentView.Create(transform, new Vector3(x, y, SegmentZ), CellSize, cell, false);
+                    }
+                    else
+                    {
+                        _tiles[pos] = useShapes
                             ? TileView.CreateShapes(transform, new Vector3(x, y, TileZ), CellSize, color)
                             : TileView.Create(transform, new Vector3(x, y, TileZ), CellSize, color);
-                    _segments[pos] = SegmentView.Create(transform, new Vector3(x, y, SegmentZ), CellSize, cell, useShapes);
+                        _segments[pos] = SegmentView.Create(transform, new Vector3(x, y, SegmentZ), CellSize, cell, useShapes);
+                    }
                 }
 
-                if (arrow.FreezeAt > 0)
+                if (arrow.FreezeAt > 0 && !xz) // buz: XZ'de sonra ele alınacak
                     _ices[arrow.ArrowId] = IceView.Create(transform, level, arrow, CellSize);
             }
         }
@@ -96,29 +139,55 @@ namespace ArrowRotate.View
 
             foreach (var seg in _segments.Values)
                 if (seg != null) seg.SetShadowColor(theme.SegmentShadow);
+
+            // XZ: materyalleri DB'den canlı yeniden ata (master/per-color/segment değiştir → level'ı yeniden yüklemeden dene)
+            if (Is3DXZ && _level != null)
+            {
+                var db = HexaColorDatabase.Active;
+                var segMat = db.SegmentMaterial != null ? db.SegmentMaterial
+                           : (ArrowMaterial3D != null ? ArrowMaterial3D : MeshFactory.Lit3DTransparent);
+                foreach (var arrow in _level.Arrows)
+                {
+                    var tileMat = db.HexMaterialForPalette(arrow.Palette) ?? TileMaterial3D;
+                    foreach (var pos in arrow.Cells)
+                    {
+                        if (_tiles.TryGetValue(pos, out var t) && t != null) t.SetMaterial(tileMat);
+                        if (_segments.TryGetValue(pos, out var sv) && sv != null) sv.SetMaterial(segMat);
+                    }
+                }
+            }
         }
 
         /// <summary>Depth3D: ışığı LightPrefab'dan instantiate eder (açı/şiddet/renk prefab'dan) + düz ambient.</summary>
         private void Setup3DLighting()
         {
+            Light light;
             if (LightPrefab != null)
             {
                 // prefab'ın kendi rotasyonu korunur (directional için tek önemli olan yön)
-                Instantiate(LightPrefab, transform);
+                light = Instantiate(LightPrefab, transform).GetComponentInChildren<Light>();
             }
             else
             {
                 var go = new GameObject("Board Light");
                 go.transform.SetParent(transform, false);
-                var light = go.AddComponent<Light>();
+                light = go.AddComponent<Light>();
                 light.type = LightType.Directional;
                 go.transform.rotation = Quaternion.LookRotation(new Vector3(0.3f, -0.45f, 1f));
                 light.intensity = 0.85f;
                 light.shadows = LightShadows.None;
             }
 
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.25f, 0.26f, 0.30f); // yan yüzler koyu kalır, renkler doygun
+            // Zemine gölge düşmesi için ana ışık gölge atmalı — prefab'da kapalıysa da CastShadows3D açıkken zorla
+            if (CastShadows3D && light != null && light.shadows == LightShadows.None)
+                light.shadows = LightShadows.Soft;
+
+            // dolgu/helper ışık — olduğu gibi eklenir, gölge atmaz (kasıtlı, ışığına dokunulmaz)
+            if (HelperLightPrefab != null) Instantiate(HelperLightPrefab, transform);
+
+            // environment lighting: kaynak Skybox, intensity multiplier 1.1 (kullanıcı kararı 2026-07-21)
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
+            RenderSettings.ambientIntensity = 1.1f;
         }
 
         public void Clear()
@@ -157,8 +226,19 @@ namespace ArrowRotate.View
         public TileView GetTile((int q, int r) pos) => _tiles.TryGetValue(pos, out var t) ? t : null;
         public SegmentView GetSegment((int q, int r) pos) => _segments.TryGetValue(pos, out var sv) ? sv : null;
 
+        public bool Is3DXZ => ViewMode == HexaViewMode.Depth3D && HexMesh3D != null;
+
+        /// <summary>XZ modda segment/ok tabanının oturduğu yükseklik — KALINLAŞAN taş üst yüzeyini (bounds.max.y·TileThicknessY)
+        /// takip eder, SegmentSink kadar gömülür, üstüne SegmentDropY kadar ekstra aşağı alınır.
+        /// Uçuş animasyonu (FlightRenderer3D) da buraya oturur → tille tutarlı.</summary>
+        public float SurfaceY => HexMesh3D != null
+            ? (HexMesh3D.bounds.max.y * TileThicknessY - 0.005f - SegmentSink - SegmentDropY) * CellSize
+            : 0f;
+
         public (int q, int r) WorldToAxial(Vector3 world)
-            => HexMetrics.WorldToAxial(world.x, world.y, CellSize);
+            => Is3DXZ
+                ? HexMetrics.WorldToAxial(world.x, world.z, CellSize)   // XZ: planarY = world Z
+                : HexMetrics.WorldToAxial(world.x, world.y, CellSize);
 
         public void RemoveCellVisuals((int q, int r) pos)
         {
@@ -183,10 +263,32 @@ namespace ArrowRotate.View
             minX -= CellSize; maxX += CellSize;
             minY -= CellSize; maxY += CellSize;
 
-            var boardCenter = new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, 0f);
-
             cam.orthographic = true;
             cam.clearFlags = CameraClearFlags.SolidColor;
+
+            bool xz = ViewMode == HexaViewMode.Depth3D && HexMesh3D != null;
+            if (xz)
+            {
+                // XZ düzlemi: board yatık (world Y=0, planarY→world Z), kamera yukarıdan eğik bakar
+                var boardCenterXZ = new Vector3((minX + maxX) * 0.5f, 0f, (minY + maxY) * 0.5f);
+                float tilt = CameraPrefab != null
+                    ? Mathf.Abs(CameraPrefab.transform.eulerAngles.x > 180 ? CameraPrefab.transform.eulerAngles.x - 360 : CameraPrefab.transform.eulerAngles.x)
+                    : 55f;
+                if (tilt < 20f) tilt = 55f; // prefab XY-tilt değeri XZ'ye uygun değilse varsayılan
+                var rot = Quaternion.Euler(tilt, 0f, 0f);
+                cam.transform.rotation = rot;
+                cam.transform.position = boardCenterXZ - rot * Vector3.forward * 25f;
+                cam.backgroundColor = CameraBackground;
+
+                float xzHalfW = (maxX - minX) * 0.5f + padding;
+                float xzHalfDepth = (maxY - minY) * 0.5f + padding;
+                // eğik bakışta derinlik ekseni cos(tilt) ile kısalır; dikey kaplama buna göre
+                float xzHalfV = Mathf.Max(xzHalfDepth * Mathf.Cos(tilt * Mathf.Deg2Rad) + 0.5f, xzHalfW / cam.aspect);
+                cam.orthographicSize = xzHalfV;
+                return;
+            }
+
+            var boardCenter = new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, 0f);
 
             if (ViewMode == HexaViewMode.Depth3D)
             {

@@ -34,11 +34,12 @@ namespace ArrowRotate.View
 
         private void Tap(Vector3 screenPos)
         {
-            // z=0 board düzlemine ışın kesişimi — dik ve eğik (3D mod) kamerada aynı çalışır
             var ray = Cam.ScreenPointToRay(screenPos);
-            if (Mathf.Abs(ray.direction.z) < 1e-5f) return;
-            float t = -ray.origin.z / ray.direction.z;
-            Manager.OnTapWorld(ray.GetPoint(t));
+            // Board düzlemine ışın: XZ modda Y=0 düzlemi, 2D modda z=0 düzlemi
+            bool xz = Manager.Board != null && Manager.Board.Is3DXZ;
+            var plane = xz ? new UnityEngine.Plane(Vector3.up, 0f) : new UnityEngine.Plane(Vector3.forward, 0f);
+            if (plane.Raycast(ray, out float dist))
+                Manager.OnTapWorld(ray.GetPoint(dist));
         }
     }
 }

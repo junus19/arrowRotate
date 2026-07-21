@@ -15,6 +15,33 @@ namespace ArrowRotate.View
         private Color _color;
         private float _alpha = 1f;
         private Coroutine _fade;
+        private Vector3 _spinAxis = Vector3.forward; // vanish dönüş ekseni (XZ modda Y)
+
+        /// <summary>Depth3D XZ: EP hexagon mesh'i XZ düzleminde (yatık), palet renginde. Fade/vanish material alfası ile.
+        /// xzScale: yatay footprint çarpanı (hücre aralığı sabit → segment bağlantıları etkilenmez). thickness: Y kalınlık çarpanı.</summary>
+        public static TileView Create3DXZ(Transform parent, Vector3 worldPos, float s, Color color, Mesh hexMesh, Material mat,
+                                          float xzScale = 1f, float thickness = 1f)
+        {
+            var go = new GameObject("Tile");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = worldPos;
+            // mesh köşe yarıçapı ~1 → S ile ölçek; yatay xzScale, kalınlık (Y) thickness ile ayrıca çarpılır
+            go.transform.localScale = new Vector3(s * xzScale, s * thickness, s * xzScale);
+
+            var mf = go.AddComponent<MeshFilter>();
+            mf.sharedMesh = hexMesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = mat != null ? mat : MeshFactory.Lit3DTransparent;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+
+            var view = go.AddComponent<TileView>();
+            view._renderer = mr;
+            view._color = color;
+            view._spinAxis = Vector3.up; // XZ'de vanish dönüşü Y ekseni
+            MeshFactory.SetColor(mr, color);
+            return view;
+        }
 
         /// <summary>Shapes2D: yuvarlatılmış RegularPolygon hexagon (flat-top, köşeler 0°/60°…).</summary>
         public static TileView CreateShapes(Transform parent, Vector3 pos, float s, Color color)
@@ -82,6 +109,23 @@ namespace ArrowRotate.View
             return view;
         }
 
+        /// <summary>XZ gölge: taşı caster yapar (zemine gölge düşsün). ⚠ Materyal Transparent'sa URP gölge haritasına yazmaz.</summary>
+        public void SetCastShadows(bool on)
+        {
+            if (_renderer == null) return;
+            _renderer.shadowCastingMode = on
+                ? UnityEngine.Rendering.ShadowCastingMode.On
+                : UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        /// <summary>Canlı materyal değişimi (RefreshTheme). Renk MPB ile taşındığı için değişmez.</summary>
+        public void SetMaterial(Material mat)
+        {
+            if (_renderer == null || mat == null) return;
+            _renderer.sharedMaterial = mat;
+            MeshFactory.SetColor(_renderer, _color); // MPB yeni materyalde de _BaseColor'ı korusun
+        }
+
         public void Vanish(float delay)
         {
             StartCoroutine(VanishRoutine(delay));
@@ -100,7 +144,7 @@ namespace ArrowRotate.View
                 t = Mathf.Min(1f, t + Time.deltaTime / dur);
                 float e = Easing.OutCubic(t);
                 transform.localScale = startScale * Mathf.Lerp(1f, 0.25f, e);
-                transform.localRotation = Quaternion.Euler(0f, 0f, -30f * e); // ekranda saat yönü
+                transform.localRotation = Quaternion.AngleAxis(-30f * e, _spinAxis); // ekranda saat yönü
                 SetAlpha(startAlpha * (1f - e));
                 yield return null;
             }

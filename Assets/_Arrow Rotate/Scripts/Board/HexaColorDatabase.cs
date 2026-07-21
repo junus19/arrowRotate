@@ -15,15 +15,34 @@ namespace ArrowRotate.View
     [CreateAssetMenu(fileName = "HexaColorDatabase", menuName = "Arrow Rotate/Color Database")]
     public class HexaColorDatabase : ScriptableObject
     {
+        /// <summary>Hexagon materyal stratejisi (yalnızca Depth3D XZ modunda geçerli).</summary>
+        public enum HexMaterialMode
+        {
+            Master,   // TÜM hexagonlar MasterHexMaterial'ı kullanır (renk _BaseColor ile palete göre verilir)
+            PerColor  // her palet kendi Entry.Material'ını kullanır (boşsa MasterHexMaterial'a düşer)
+        }
+
         [Serializable]
         public struct Entry
         {
             public string Name;  // sadece inspector etiketi
             public Color Value;
+            [Tooltip("PerColor modunda bu renge özel material (özellikleri değiştirilmiş bir varyant koyabilirsin; boşsa MasterHexMaterial'a düşer). Renk _BaseColor ile yine palete göre verilir.")]
+            public Material Material;
         }
 
         [Tooltip("Palet renkleri — dizi sırası = palet index'i (0..N-1). Aynı paletteki iki ok komşu olamaz kuralı bu index üzerinden yürür.")]
         [SerializeField] private Entry[] _palettes = DefaultPalettes();
+
+        [Header("Hexagon materyalleri (yalnızca Depth3D XZ)")]
+        [Tooltip("Master = tüm hexagonlar MasterHexMaterial · PerColor = her palet kendi Entry.Material'ını kullanır. Değişince level'ı yeniden yükle veya Board.RefreshTheme (Güncelle) çağır.")]
+        public HexMaterialMode HexMaterial = HexMaterialMode.Master;
+
+        [Tooltip("Master mod: TÜM hexagonlar bu materyali kullanır. Renk _BaseColor ile palete göre uygulanır, yani burada yalnızca yüzey özelliklerini (metallic/smoothness/shader) ayarlarsın. Boşsa kod-içi Lit3DTransparent.")]
+        public Material MasterHexMaterial;
+
+        [Tooltip("Ok + segment materyali — tek materyal tüm oklara/segmentlere. Renk SegmentColor (beyaz) ile _BaseColor'a uygulanır. Boşsa kod-içi Lit3DTransparent.")]
+        public Material SegmentMaterial;
 
         [Tooltip("Ok segmentlerinin (kuyruk noktası, çizgi, ok ucu) rengi — SKILL §6: beyaz.")]
         public Color SegmentColor = Color.white;
@@ -34,6 +53,18 @@ namespace ArrowRotate.View
         {
             if (_palettes == null || _palettes.Length == 0) return Color.white;
             return _palettes[((index % _palettes.Length) + _palettes.Length) % _palettes.Length].Value;
+        }
+
+        /// <summary>Bir palet index'i için hexagon materyali (Depth3D XZ). Master modda hep MasterHexMaterial;
+        /// PerColor modda o renge özel material (boşsa MasterHexMaterial). Hiçbiri yoksa null → çağıran Lit3DTransparent'a düşer.</summary>
+        public Material HexMaterialForPalette(int index)
+        {
+            if (HexMaterial == HexMaterialMode.PerColor && _palettes != null && _palettes.Length > 0)
+            {
+                var e = _palettes[((index % _palettes.Length) + _palettes.Length) % _palettes.Length];
+                if (e.Material != null) return e.Material;
+            }
+            return MasterHexMaterial;
         }
 
         /// <summary>Editör palet seçici için tüm renkler (sıralı).</summary>

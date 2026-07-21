@@ -181,6 +181,12 @@ Ses/haptik: yalnızca `FxRequestEvent` (Rotate / Connect / Launch / Bounce / Ice
 - [x] Oklar karar gereği düz sprite katmanı kaldı (kabartma yok — referans görsellerle uyumlu).
 - Referans stil: Hexa Sort / Combo Blast benzeri puck taşlar; ekran görüntüleriyle karşılaştırıldı. Gölge/arka plan cilası Faz 8'e.
 
+### Ek iş — XZ 3D render yolu ✅ (2026-07-21)
+- [x] Board gerçek XZ düzlemine taşındı (kullanıcı kararı: klasik 3D düzlemi; partikül vb. için doğal). Taş = kullanıcının EP hexagon'u (bake edilmiş mesh), kamera yukarıdan eğik, tap Y=0 düzlemine ışın, dönüş Y ekseni.
+- [x] **Segmentler tek parça prosedürel mesh** (`SegmentMesh3D`): EP arm oranlarıyla süpürülmüş yuvarlak kesit, açılı birleşimlerde kavisli dirsek, head'de stub+tabanı oturan ok başı (CombineMeshes). Kullanıcının şikayet ettiği iki bug çözüldü: ok başı/segment bindirmesi ve açılı head bozukluğu.
+- [x] **Uçuş/bounce 3D** (`FlightRenderer3D`): LineRenderer kaldırıldı; her frame pencere şeridi mesh üretimi + uçta aynı ok başı → tile segmentleriyle seamless. Canlı testte uçuş + zincirleme çıkış doğrulandı.
+- Kalan (XZ): buz görselleri (IceView XY'de; XZ'de Build atlıyor — mantık çalışıyor, görsel işaret yok) + ok başı boyu/kamera ince ayarı kullanıcı geri bildirimiyle.
+
 ### Faz 8 — SDK, build, cila (2 gün + süreklilik)
 - [ ] Native SDK'lar import edilmemiş: MAX (AppLovin), Adjust, GameAnalytics, Firebase + scripting define'ları (`MAX_ENABLED`, `ADJUST_ENABLED`…).
 - [ ] Analytics şeması: level_start/win (seed loglanır — spec §11 repro önerisi), rotate sayısı, süre, buz kırılmaları, blocked sayısı.

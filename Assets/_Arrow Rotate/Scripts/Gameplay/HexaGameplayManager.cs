@@ -163,7 +163,15 @@ namespace ArrowRotate.Game
             if (!_pendingExit.TryGetValue(arrowId, out var exit)) return;
 
             var blockers = RayScanner.Blockers(_level, arrowId, exit.HeadCell, exit.ExitDir);
-            var pts = FlightPathBuilder.Build(_level, arrowId, Board.CellSize);
+            // 3D XZ: uç mesafesi tile'daki ok ucuyla AYNI (temel HeadTipDist + head'in dar-açı bump'ı) → kalkışta sıçrama yok
+            float tipDist = -1f;
+            if (Board.Is3DXZ)
+            {
+                var hc = _level.GetCell(arrow.HeadPos);
+                tipDist = SegmentMesh3D.HeadTipDist * Board.CellSize
+                          + SegmentView.HeadForwardBump(hc.A, hc.B, Board.CellSize);
+            }
+            var pts = FlightPathBuilder.Build(_level, arrowId, Board.CellSize, tipDist);
 
             if (blockers.Count > 0)
             {
@@ -199,8 +207,12 @@ namespace ArrowRotate.Game
                 Board.GetTile(cellKeys[i])?.Vanish(VanishStartDelay + i * perCell);
             }
 
-            var fr = FlightRenderer.Create(pts, s, FlightExtension, BoardView.OverlayZ);
-            fr.Fly(FlightSpeed, () => OnFlightDone(arrow, cellKeys));
+            if (Board.Is3DXZ)
+                FlightRenderer3D.Create(pts, s, FlightExtension, Board.SurfaceY, Board.ArrowMaterial3D)
+                    .Fly(FlightSpeed, () => OnFlightDone(arrow, cellKeys));
+            else
+                FlightRenderer.Create(pts, s, FlightExtension, BoardView.OverlayZ)
+                    .Fly(FlightSpeed, () => OnFlightDone(arrow, cellKeys));
         }
 
         private void OnFlightDone(Arrow arrow, List<(int q, int r)> cellKeys)
@@ -268,13 +280,18 @@ namespace ArrowRotate.Game
             // bounce sırasında hücre segmentleri gizlenir, overlay gövdeyi oynatır
             foreach (var ck in arrow.Cells) Board.GetSegment(ck)?.SetVisible(false);
 
-            var fr = FlightRenderer.Create(pts, s, hitDist + 1.2f * s, BoardView.OverlayZ);
-            fr.Bounce(hitDist, BounceDuration, () =>
+            System.Action onBounceDone = () =>
             {
                 foreach (var ck in arrow.Cells) Board.GetSegment(ck)?.SetVisible(true);
                 FadeTiles(arrow, visible: true); // çarpıp geri döndü: taşlar geri açılır
                 ArrowBlocked?.Invoke(arrow.ArrowId);
-            });
+            };
+            if (Board.Is3DXZ)
+                FlightRenderer3D.Create(pts, s, hitDist + 1.2f * s, Board.SurfaceY, Board.ArrowMaterial3D)
+                    .Bounce(hitDist, BounceDuration, onBounceDone);
+            else
+                FlightRenderer.Create(pts, s, hitDist + 1.2f * s, BoardView.OverlayZ)
+                    .Bounce(hitDist, BounceDuration, onBounceDone);
         }
 
         private void FadeTiles(Arrow arrow, bool visible)

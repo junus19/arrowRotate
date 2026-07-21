@@ -11,7 +11,10 @@ namespace ArrowRotate.Logic
     /// </summary>
     public static class FlightPathBuilder
     {
-        public static List<(float x, float y)> Build(HexaLevel level, int arrowId, float s)
+        /// <param name="tipDist">Head ucunun merkezden uzaklığı (dünya birimi). Negatifse prototip
+        /// varsayılanı (0.62·apothem). 3D XZ'de SegmentMesh3D.HeadTipDist·s geçilir — tile'daki
+        /// ok ucu ile uçuş overlay ucu aynı noktada başlasın (kalkışta sıçrama olmasın).</param>
+        public static List<(float x, float y)> Build(HexaLevel level, int arrowId, float s, float tipDist = -1f)
         {
             var pts = new List<(float x, float y)>();
             var arrow = level.Arrows[arrowId];
@@ -32,8 +35,8 @@ namespace ArrowRotate.Logic
                 {
                     int flyDir = nx.WorldB;
                     float a = HexMetrics.DirAngleDeg(flyDir) * (float)System.Math.PI / 180f;
-                    float tipDist = 0.62f * HexMetrics.Apothem(s);
-                    pts.Add((cx + tipDist * (float)System.Math.Cos(a), cy + tipDist * (float)System.Math.Sin(a)));
+                    float tip = tipDist >= 0f ? tipDist : 0.62f * HexMetrics.Apothem(s);
+                    pts.Add((cx + tip * (float)System.Math.Cos(a), cy + tip * (float)System.Math.Sin(a)));
                     break;
                 }
 

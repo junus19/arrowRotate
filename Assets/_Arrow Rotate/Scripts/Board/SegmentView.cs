@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using ArrowRotate.Core;
 using UnityEngine;
 
@@ -18,6 +19,10 @@ namespace ArrowRotate.View
         private float _targetAngle;
         private float _currentAngle; // birikimli sürekli açı — localEulerAngles'ın 0..360 sarmasından bağımsız
         private Coroutine _anim;
+        // Dönüş ekseni/adımı: 2D = Z ekseni, -60°/tap · Depth3D XZ = Y ekseni, +60°/tap
+        private Vector3 _rotAxis = Vector3.forward;
+        private float _stepDeg = -60f;
+        private MeshRenderer _meshRenderer3D; // XZ segment mesh renderer (canlı materyal değişimi için)
 
         public static SegmentView Create(Transform parent, Vector3 pos, float s, Cell cell, bool useShapes = false)
         {
@@ -232,7 +237,7 @@ namespace ArrowRotate.View
         /// <summary>Bir tap'lik dönüşü başlatır/birleştirir. Veri rot'u çağıran taraf günceller.</summary>
         public void RotateOneStep()
         {
-            _targetAngle -= 60f;
+            _targetAngle += _stepDeg;
             if (_anim != null) StopCoroutine(_anim);
             _anim = StartCoroutine(RotateRoutine());
         }
@@ -240,9 +245,9 @@ namespace ArrowRotate.View
         public void SetInstantRot(int rot)
         {
             if (_anim != null) { StopCoroutine(_anim); _anim = null; }
-            _targetAngle = HexMetrics.RotationZDeg(rot);
+            _targetAngle = _stepDeg * rot;
             _currentAngle = _targetAngle;
-            _rotRoot.localRotation = Quaternion.Euler(0f, 0f, _targetAngle);
+            _rotRoot.localRotation = Quaternion.AngleAxis(_targetAngle, _rotAxis);
         }
 
         public void SetVisible(bool visible) => _rotRoot.gameObject.SetActive(visible);
@@ -255,10 +260,152 @@ namespace ArrowRotate.View
             {
                 t = Mathf.Min(1f, t + Time.deltaTime / RotateDuration);
                 _currentAngle = Mathf.LerpUnclamped(from, _targetAngle, Easing.OutBack(t));
-                _rotRoot.localRotation = Quaternion.Euler(0f, 0f, _currentAngle);
+                _rotRoot.localRotation = Quaternion.AngleAxis(_currentAngle, _rotAxis);
                 yield return null;
             }
             _anim = null;
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        //  Depth3D XZ — TEK PARÇA prosedürel segment mesh (SegmentMesh3D üreticisi)
+        //  Açılı birleşimler kavisli dirsek; head'de stub kolu + tabanı stub'a oturan
+        //  ok başı aynı mesh'te birleşir (CombineMeshes) — bindirme/çakışma yok.
+        // ══════════════════════════════════════════════════════════════════════
+
+        public static SegmentView Create3DXZ(Transform parent, Vector3 worldPos, float s, Cell cell, Material mat)
+        {
+            var go = new GameObject("Segment");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = worldPos;
+            var view = go.AddComponent<SegmentView>();
+            view._rotAxis = Vector3.up;   // XZ'de dönüş Y ekseni
+            view._stepDeg = 60f;          // +60°/tap (2D -60 Z'nin XZ karşılığı)
+
+            var rot = new GameObject("Rot");
+            rot.transform.SetParent(go.transform, false);
+            view._rotRoot = rot.transform;
+
+            var meshGo = new GameObject("Mesh");
+            meshGo.transform.SetParent(rot.transform, false);
+            var mf = meshGo.AddComponent<MeshFilter>();
+            mf.sharedMesh = GetOrBuildMesh3D(s, cell);
+            var mr = meshGo.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = mat != null ? mat : MeshFactory.Lit3DTransparent;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            MeshFactory.SetColor(mr, HexaPalette.Segment);
+            view._meshRenderer3D = mr;
+
+            view.SetInstantRot(cell.Rot);
+            return view;
+        }
+
+        /// <summary>XZ gölge: segment/ok'u caster yapar. ⚠ Materyal Transparent'sa URP gölge haritasına yazmaz.</summary>
+        public void SetCastShadows(bool on)
+        {
+            if (_meshRenderer3D == null) return;
+            _meshRenderer3D.shadowCastingMode = on
+                ? UnityEngine.Rendering.ShadowCastingMode.On
+                : UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        /// <summary>Canlı materyal değişimi (RefreshTheme, XZ). Segment rengi (beyaz) MPB ile korunur.</summary>
+        public void SetMaterial(Material mat)
+        {
+            if (_meshRenderer3D == null || mat == null) return;
+            _meshRenderer3D.sharedMaterial = mat;
+            MeshFactory.SetColor(_meshRenderer3D, HexaPalette.Segment);
+        }
+
+        // Şekil rot'tan bağımsız (rot transform ile uygulanır) → (Tip, A, B, s) önbelleği
+        private static readonly Dictionary<(CellType, int, int, float), Mesh> _meshCache3D
+            = new Dictionary<(CellType, int, int, float), Mesh>();
+
+        /// <summary>Head'in dönüş keskinliğine göre ok başını dirB boyunca ne kadar ÖNE alacağı (dünya birimi).
+        /// A ve B kolları arasındaki açı: 60° (en keskin) → tam HeadBendForwardMax; 120°+ (geniş/düz) → 0.
+        /// Açı iki kol arasında olduğundan rotasyondan BAĞIMSIZ → local (A,B) ile world (WorldA,WorldB) aynı sonucu verir,
+        /// böylece tile ok başı ile uçuş yolu ucu birebir eşleşir (seamless). HexaGameplayManager da bunu çağırır.</summary>
+        public static float HeadForwardBump(int a, int b, float s)
+        {
+            float angA = HexMetrics.DirAngleDeg(a) * Mathf.Deg2Rad;
+            float angB = HexMetrics.DirAngleDeg(b) * Mathf.Deg2Rad;
+            var dirA = new Vector2(Mathf.Cos(angA), Mathf.Sin(angA));
+            var dirB = new Vector2(Mathf.Cos(angB), Mathf.Sin(angB));
+            float armAngle = Vector2.Angle(dirA, dirB);            // 60 (keskin) .. 180 (düz)
+            float t = Mathf.Clamp01((180f - armAngle) / 120f);     // 180°→0, 120°→0.5, 60°→1
+            return t * SegmentMesh3D.HeadBendForwardMax * s;
+        }
+
+        private static Mesh GetOrBuildMesh3D(float s, Cell cell)
+        {
+            var key = (cell.Type, cell.A, cell.B, s);
+            if (_meshCache3D.TryGetValue(key, out var cached) && cached != null) return cached;
+            var mesh = BuildSegmentMesh3D(s, cell);
+            _meshCache3D[key] = mesh;
+            return mesh;
+        }
+
+        private static Mesh BuildSegmentMesh3D(float s, Cell cell)
+        {
+            float apo = HexMetrics.Apothem(s);
+            Vector2 Dir(int d)
+            {
+                float t = HexMetrics.DirAngleDeg(d) * Mathf.Deg2Rad;
+                return new Vector2(Mathf.Cos(t), Mathf.Sin(t));
+            }
+            Vector2 Edge(int d) => Dir(d) * apo;
+
+            float w = SegmentMesh3D.Width * s, h = SegmentMesh3D.Height * s;
+            float rc = SegmentMesh3D.Fillet * s, joinR = SegmentMesh3D.JoinRadius * s;
+
+            switch (cell.Type)
+            {
+                case CellType.Tail:
+                    // merkez ucu yuvarlak, kenar ucu DÜZ (komşu hücreyle yüz yüze birleşim)
+                    return SegmentMesh3D.BuildStrip(
+                        new List<Vector2> { Vector2.zero, Edge(cell.B) },
+                        w, h, rc, joinR, capStart: true, capEnd: false);
+
+                case CellType.Mid:
+                    // tek sürekli şerit; açılıysa merkezde kavisli dirsek
+                    return SegmentMesh3D.BuildStrip(
+                        new List<Vector2> { Edge(cell.A), Vector2.zero, Edge(cell.B) },
+                        w, h, rc, joinR, capStart: false, capEnd: false);
+
+                default: // Head: giriş → merkez → B stub kolu + tabanı stub ucuna oturan ok başı
+                {
+                    var dirB = Dir(cell.B);
+                    // dar açılı head'de ok başı elbow'a/A koluna yapışmasın diye ekstra öne itilir
+                    float tipDist = SegmentMesh3D.HeadTipDist * s + HeadForwardBump(cell.A, cell.B, s);
+                    float headLen = SegmentMesh3D.HeadLength * s;
+                    float baseDist = tipDist - headLen;
+
+                    // stub ok başının 0.04·s İÇİNE uzar — düz kapak ile ok başı arka duvarı
+                    // eş düzlemli kalırsa z-fight titremesi (mesh defekti görünümü) oluşuyordu
+                    var shaft = SegmentMesh3D.BuildStrip(
+                        new List<Vector2> { Edge(cell.A), Vector2.zero, dirB * (baseDist + 0.04f * s) },
+                        w, h, rc, joinR, capStart: false, capEnd: false);
+                    var head = SegmentMesh3D.BuildArrowhead(
+                        headLen, SegmentMesh3D.HeadHalfWidth * s, h, rc, SegmentMesh3D.HeadCornerRadius * s);
+
+                    float yaw = -HexMetrics.DirAngleDeg(cell.B); // +X → dirB (Y ekseni dönüşü)
+                    var combine = new CombineInstance[]
+                    {
+                        new CombineInstance { mesh = shaft, transform = Matrix4x4.identity },
+                        new CombineInstance
+                        {
+                            mesh = head,
+                            transform = Matrix4x4.TRS(
+                                new Vector3(dirB.x, 0f, dirB.y) * baseDist,
+                                Quaternion.Euler(0f, yaw, 0f), Vector3.one)
+                        }
+                    };
+                    var m = new Mesh { name = "HeadSegment3D" };
+                    m.CombineMeshes(combine, true, true);
+                    m.RecalculateBounds();
+                    return m;
+                }
+            }
         }
     }
 }
