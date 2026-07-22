@@ -19,6 +19,9 @@ namespace ArrowRotate.Core
         public bool Unfrozen;
         public ArrowState State = ArrowState.Idle;
         public bool Exited;
+        /// <summary>Bekleyen ok en son hangi engel oka çarpıp döndü (arrowId; -1 = henüz çarpmadı).
+        /// Aynı engele tekrar çarpmayı önler — yalnızca engel değişince yeniden çarpar.</summary>
+        public int LastBouncedBlocker = -1;
 
         public int Len => Cells.Count;
         public (int q, int r) TailPos => Cells[0];

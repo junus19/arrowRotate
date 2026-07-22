@@ -27,6 +27,9 @@ namespace ArrowRotate.Game
 
         public BoardView Board;
 
+        [Tooltip("Uçuş hızı çarpanı — tamamlanan ok bununla çıkar. 1 = prototip hızı (16.18·S/sn), büyük = daha çabuk çıkış.")]
+        public float FlightSpeedMultiplier = 1.6f;
+
         public event Action LevelWon;
         public event Action<int> ArrowExited;    // arrowId
         public event Action<int> ArrowBlocked;   // arrowId
@@ -52,10 +55,18 @@ namespace ArrowRotate.Game
             if (Board == null) Board = GetComponent<BoardView>();
         }
 
-        /// <summary>Uçuş hızı: prototip 0.55 px/ms @ S=34 ⇒ 16.18·S birim/sn.</summary>
-        private float FlightSpeed => 16.18f * Board.CellSize;
+        /// <summary>Uçuş hızı: prototip 0.55 px/ms @ S=34 ⇒ 16.18·S birim/sn × çarpan.</summary>
+        private float FlightSpeed => 16.18f * Board.CellSize * FlightSpeedMultiplier;
 
         private float FlightExtension => 26f * Board.CellSize; // proto: 900px @ S=34
+
+        /// <summary>Uçuş yolu uç mesafesi — 3D'de tile ok ucuyla aynı nokta (seamless), 2D'de prototip varsayılanı.</summary>
+        private float FlightTipDist(Arrow arrow)
+        {
+            if (!Board.Is3DXZ) return -1f;
+            var hc = _level.GetCell(arrow.HeadPos);
+            return SegmentMesh3D.HeadTipDist * Board.CellSize + SegmentView.HeadForwardBump(hc.A, hc.B, Board.CellSize);
+        }
 
         public void Begin(HexaLevel level)
         {
@@ -163,25 +174,29 @@ namespace ArrowRotate.Game
             if (!_pendingExit.TryGetValue(arrowId, out var exit)) return;
 
             var blockers = RayScanner.Blockers(_level, arrowId, exit.HeadCell, exit.ExitDir);
-            // 3D XZ: uç mesafesi tile'daki ok ucuyla AYNI (temel HeadTipDist + head'in dar-açı bump'ı) → kalkışta sıçrama yok
-            float tipDist = -1f;
-            if (Board.Is3DXZ)
-            {
-                var hc = _level.GetCell(arrow.HeadPos);
-                tipDist = SegmentMesh3D.HeadTipDist * Board.CellSize
-                          + SegmentView.HeadForwardBump(hc.A, hc.B, Board.CellSize);
-            }
-            var pts = FlightPathBuilder.Build(_level, arrowId, Board.CellSize, tipDist);
 
             if (blockers.Count > 0)
             {
+                int nearest = blockers[0].ArrowId;
+                // Aynı engele bir kez çarpıp döndüyse TEKRAR ÇARPMA — sessizce beklemede kal.
+                // Yalnızca önündeki engel DEĞİŞTİYSE (farklı ok) yeniden çarpar (sürekli çarpma yok).
+                // NOT: OnFlightDone zincir-fırlatmada state'i Connected'a çevirdiği için state'e GÜVENME;
+                // gate yalnızca LastBouncedBlocker'a dayanır. İlk çarpışta değer -1'dir → daima çarpar.
+                if (arrow.LastBouncedBlocker == nearest)
+                {
+                    arrow.State = ArrowState.Waiting; // beklemede kal ki sonraki zincirde yeniden denensin
+                    return;
+                }
+
                 arrow.State = ArrowState.Waiting;
-                StartBounce(arrow, pts, blockers[0]);
+                arrow.LastBouncedBlocker = nearest;
+                var bpts = FlightPathBuilder.Build(_level, arrowId, Board.CellSize, FlightTipDist(arrow));
+                StartBounce(arrow, bpts, blockers[0]);
+                return;
             }
-            else
-            {
-                StartFlight(arrow, pts);
-            }
+
+            var pts = FlightPathBuilder.Build(_level, arrowId, Board.CellSize, FlightTipDist(arrow));
+            StartFlight(arrow, pts);
         }
 
         // ── uçuş ───────────────────────────────────────────────────────────────

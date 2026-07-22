@@ -5011,6 +5011,7 @@ MonoBehaviour:
   _movesText: {fileID: 8716752806895592582}
   _chipsContainer: {fileID: 7401018836982918337}
   _chipTemplate: {fileID: 0}
+  _checkSprite: {fileID: 21300000, guid: cc04d8c6097ab4aafbfd11cf1801eba6, type: 3}
 --- !u!225 &3043373231658511043
 CanvasGroup:
   m_ObjectHideFlags: 0

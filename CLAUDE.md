@@ -12,6 +12,7 @@ Bu proje 2 developer tarafından geliştirilmektedir. Her iki developer da ayrı
 - Bir convention değiştirildiğinde önce bu dosya güncellenir, sonra koda yansıtılır.
 - Çakışmaları önlemek için sistemler arasında sahiplik ayrımı yapılır — bir sistem bir developer tarafından geliştirilirken diğeri o sisteme dokunmaz.
 - Kod stili, mimari kararlar ve isimlendirme her iki taraf için bağlayıcıdır; kişisel tercih geçerli değildir.
+- **Vibe (2026-07-22):** İş güzel gittiğinde, görünüm/hissiyat oturduğunda ekip "Maşallah" der 😄 — küçük bir kutlama kültürü. Claude da uygun düştüğünde katılabilir.
 
 ---
 
@@ -55,7 +56,8 @@ Saf C# katmanına (Core/Logic/Generation) MonoBehaviour/Unity API EKLENMEZ; test
 
 - **Boot.unity**: "Game Manager" objesindeki component `HexaGameManager : GameManager` ile değiştirildi (inspector'daki data referansları korunarak). `_gameConfig` → `Assets/_Arrow Rotate/Data/Hexa Game Config.asset`. Level sonu +25 coin burada verilir (`_coinRewardPerLevel` alanı).
 - **Game.unity**: yalnız "Hexa Arrows" GO (BoardView + HexaGameplayManager + TapController). Example kalıntıları (trigger'lar, kamera, ışık) silindi — kamera Boot'taki `CameraManager.GameplayCamera`.
-- **HUD (2026-07-22 değişti): `HexaHudPanel` artık UI'ı runtime KURMAZ — sahnedeki hazır hiyerarşiye bağlanır.** Yer: **Gameplay Panel.prefab** (GUI sahnesi) içindeki `Gameplay Items Container > Hexa HUD Panel > Bar > Timer/Moves/Chips`. Serialize alanlar prefab'da bağlı: `_bar` (göster/gizle kökü), `_timerText`, `_movesText` (TMP), `_chipsContainer` (GridLayoutGroup'lu Chips), `_chipTemplate` (opsiyonel — verilirse ok başına klonlanır ve şablon gizlenir; boşsa kod-içi daire çip fallback). Sadece EventBus dinler (gameplay'e referans yok). BuildChips container'ı temizleyip ok başına çip üretir → **editördeki örnek çipler runtime'da otomatik silinir**.
+- **HUD (2026-07-22 değişti): `HexaHudPanel` artık UI'ı runtime KURMAZ — sahnedeki hazır hiyerarşiye bağlanır.** Yer: **Gameplay Panel.prefab** (GUI sahnesi) içindeki `Gameplay Items Container > Hexa HUD Panel > Bar > Timer/Moves/Chips`. Serialize alanlar prefab'da bağlı: `_bar` (göster/gizle kökü), `_timerText`, `_movesText` (TMP), `_chipsContainer` (GridLayoutGroup'lu Chips), `_chipTemplate` (opsiyonel — verilirse ok başına klonlanır ve şablon gizlenir; boşsa kod-içi daire çip fallback), `_checkSprite` (`Icon_WhiteIcon_check_m`, guid cc04d8c6…). Sadece EventBus dinler (gameplay'e referans yok). BuildChips container'ı temizleyip ok başına çip üretir → **editördeki örnek çipler runtime'da otomatik silinir**.
+  - **Onay işareti (2026-07-22):** her çip oluşturulurken üstüne gizli bir "Check" Image (fill, `_checkSprite`, preserveAspect) eklenir; ok ÇIKINCA (`OnArrowExited`) `Check.enabled=true` → renk tam kalır, üstünde beyaz tik belirir (çip 0.9× küçülür). Eski alpha-fade sinyali yerini tike bıraktı.
   - ⚠ **Artık 2 ESKİ HexaHudPanel instance'ı kaldı** (GUI sahnesinde `Hexa HUD` standalone + `Gameplay Items Container/Hexa HUD Sample Prefab`). Üçü de EventBus'a abone → çakışma. Yalnızca `Hexa HUD Panel` kalmalı; diğer ikisi silinmeli/devre dışı bırakılmalı (kullanıcı temizleyecek).
 - `HexaGameState_Gameplay : GameState_Gameplay` gameplay state'ini değiştirir (Example deseni); `HexaLevelData : LevelData` hücre dizisini taşır (bkz. "Level içeriği ve formatı"), Scene alanı boş (Level.Load sahne yüklemez).
 - Build sırası: Boot → Game → GUI. `Assets/_Arrow Rotate/Scene/HexaSandbox.unity` = Gamebrain'siz izole test sahnesi (`HexaSandboxDriver`: TapCell/SolveArrow/SolveAll).
@@ -176,9 +178,11 @@ Asıl level düzenleme aracı — arrowJam editörünün hex uyarlaması. Tüm d
 - **Y-ekseni sözleşmesi** (`HexMetrics` + `HexMathTests` ile sabit — DEĞİŞTİRME): Unity açısı = −(30+60d)°, hücre y'si negatiflenir, tap = z'de −60° (ekranda saat yönü).
 - Mid segment görseli DAİMA merkezden kırık çizgi; uçuş polyline'ı da merkezlerden geçer.
 - Uçuşa başlayan okun hücreleri `level.Cells`'ten ANINDA silinir (uçan ok engel sayılmaz).
+- **Çarpma tek seferlik / engel değişince (2026-07-22, kullanıcı kararı):** bekleyen ok AYNI engele TEKRAR çarpmaz — yalnızca önündeki en yakın engel (blockers[0]) DEĞİŞİRSE yeniden çarpar. `Arrow.LastBouncedBlocker` (arrowId, -1=hiç) tutar; `TryLaunch` gate'i `if (LastBouncedBlocker == nearest) { State=Waiting; return; }` yoksa çarp+güncelle. ⚠ Gate state'e GÜVENMEZ — `OnFlightDone` zincir-fırlatmada state'i geçici `Connected`'a çevirdiği için yalnız `LastBouncedBlocker`'a bakar; skip'te tekrar `Waiting` yapılır ki sonraki zincirde yeniden denensin. Aksi halde sürekli çarpma olurdu (yaşandı: ok 2 kez çarpıyordu).
+- **Uçuş hızı çarpanı (2026-07-22):** `HexaGameplayManager.FlightSpeedMultiplier` (varsayılan 1.6) — tamamlanan ok bununla çıkar; `FlightSpeed = 16.18·S·çarpan`. Taş vanish gecikmesi de FlightSpeed'e bağlı olduğundan tutarlı hızlanır.
 - Hücre erişimi `Dictionary<(int q,int r), Cell>`; string key yasak.
 - Level asset'lerinde hücre dizisi elle DEĞİL Level Editor ile düzenlenir; tek hücre silmek/taşımak zincir invariant'ını bozar (editör bu yüzden ok bazında siler/taşır).
-- Zamanlamalar prototip birebir (HexaGameplayManager/SegmentView sabitleri): dönüş 160ms, kontrol 170ms, fırlatma 240ms, bounce 560ms, zincir 180+260ms, uçuş 16.18·S/sn. Değiştirmeden önce bu dosyaya yaz.
+- Zamanlamalar prototip birebir (HexaGameplayManager/SegmentView sabitleri): dönüş 160ms, kontrol 170ms, fırlatma 240ms, bounce 560ms, zincir 180+260ms, uçuş 16.18·S/sn **× FlightSpeedMultiplier (vars. 1.6)**. Değiştirmeden önce bu dosyaya yaz.
 - MeshRenderer renkleri MPB ile ve **linear dönüşümlü** set edilir (`MeshFactory.SetColor`) — proje Linear color space.
 - Framework koduna (`Assets/Gamebrain/`) dokunulmaz; genişletme yalnız subclass ile.
 

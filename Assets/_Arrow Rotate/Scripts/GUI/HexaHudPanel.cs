@@ -29,6 +29,8 @@ namespace ArrowRotate.UI
         [SerializeField] private RectTransform _chipsContainer;
         [Tooltip("Opsiyonel çip şablonu — verilirse ok başına klonlanır (Image kök + TMP alt etiket). Boşsa daire çip üretilir.")]
         [SerializeField] private GameObject _chipTemplate;
+        [Tooltip("Ok çıkınca çip üstünde beliren onay işareti (Icon_WhiteIcon_check_m).")]
+        [SerializeField] private Sprite _checkSprite;
 
         private readonly Dictionary<int, Chip> _chips = new Dictionary<int, Chip>();
         private bool _timerRunning;
@@ -46,6 +48,7 @@ namespace ArrowRotate.UI
         {
             public Image Bg;
             public TextMeshProUGUI Label;
+            public Image Check;   // ok çıkınca görünen onay işareti (başta gizli)
             public int FreezeAt;
         }
 
@@ -116,14 +119,10 @@ namespace ArrowRotate.UI
         private void OnArrowExited(HexaArrowExitedEvent e)
         {
             if (!_chips.TryGetValue(e.ArrowId, out var chip)) return;
-            // Not: TMP varsayılan fontunda ✓/❄ glifleri yok — art pass'te ikonlaşacak.
             if (chip.Label != null) chip.Label.text = string.Empty;
-            if (chip.Bg != null)
-            {
-                var c = chip.Bg.color;
-                chip.Bg.color = new Color(c.r, c.g, c.b, 0.35f); // soluk = çıktı
-                chip.Bg.rectTransform.localScale = Vector3.one * 0.8f;
-            }
+            // renk üstünde onay işareti belirir (çıktı sinyali); renk tam kalır, çip hafif küçülür
+            if (chip.Check != null) chip.Check.enabled = true;
+            if (chip.Bg != null) chip.Bg.rectTransform.localScale = Vector3.one * 0.9f;
         }
 
         private void OnIceBroken(HexaIceBrokenEvent e)
@@ -195,7 +194,26 @@ namespace ArrowRotate.UI
                 if (img != null) img.color = HexaPalette.ForPalette(info.Palette);
                 if (label != null) label.text = info.FreezeAt > 0 ? info.FreezeAt.ToString() : string.Empty;
 
-                _chips[info.ArrowId] = new Chip { Bg = img, Label = label, FreezeAt = info.FreezeAt };
+                // onay işareti overlay'i (başta gizli; ok çıkınca enabled). Chip kökünün üstünde tam kaplar.
+                Image check = null;
+                var host = img != null ? img.rectTransform : (label != null ? label.rectTransform : null);
+                if (host != null)
+                {
+                    var cgo = new GameObject("Check", typeof(RectTransform));
+                    cgo.transform.SetParent(host, false);
+                    var cr = (RectTransform)cgo.transform;
+                    cr.anchorMin = Vector2.zero; cr.anchorMax = Vector2.one;
+                    cr.offsetMin = Vector2.zero; cr.offsetMax = Vector2.zero;
+                    cr.SetAsLastSibling();
+                    check = cgo.AddComponent<Image>();
+                    check.sprite = _checkSprite;
+                    check.color = Color.white;
+                    check.raycastTarget = false;
+                    check.preserveAspect = true;
+                    check.enabled = false; // ok çıkınca açılır
+                }
+
+                _chips[info.ArrowId] = new Chip { Bg = img, Label = label, Check = check, FreezeAt = info.FreezeAt };
             }
         }
     }
