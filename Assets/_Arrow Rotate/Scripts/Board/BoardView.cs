@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using ArrowRotate.Core;
 using UnityEngine;
@@ -64,8 +65,21 @@ namespace ArrowRotate.View
 
         private readonly Dictionary<(int q, int r), TileView> _tiles = new Dictionary<(int, int), TileView>();
         private readonly Dictionary<(int q, int r), SegmentView> _segments = new Dictionary<(int, int), SegmentView>();
+        // Gömülü katman görselleri: (q,r) → Layer artan sırada (index 0 = Layer 1 = sıradaki terfi). Yalnızca XZ.
+        private readonly Dictionary<(int q, int r), List<(TileView tile, SegmentView seg)>> _buriedViews
+            = new Dictionary<(int, int), List<(TileView, SegmentView)>>();
         private readonly Dictionary<int, IceView> _ices = new Dictionary<int, IceView>();
         private HexaLevel _level;
+
+        // Katman görsel sabitleri: koyulaştırma çarpanı (index = Layer) ve yükselme süresi
+        private static readonly float[] LayerDimFactors = { 1f, 0.55f, 0.35f };
+        private const float RiseDuration = 0.4f;
+
+        /// <summary>Bir katmanın dünya-Y adımı: taş kalınlığı (katmanlar üst üste yaslanır).</summary>
+        public float StackStepY => HexMesh3D != null ? HexMesh3D.bounds.size.y * TileThicknessY * CellSize : 0f;
+
+        private static float DimFor(int layer)
+            => LayerDimFactors[Mathf.Clamp(layer, 0, LayerDimFactors.Length - 1)];
 
         public void Build(HexaLevel level)
         {
@@ -89,18 +103,37 @@ namespace ArrowRotate.View
                 var color = HexaPalette.ForPalette(arrow.Palette);
                 foreach (var pos in arrow.Cells)
                 {
-                    var cell = level.GetCell(pos);
+                    var cell = level.GetArrowCell(arrow.ArrowId, pos); // yüzey ya da gömülü — okun KENDİ hücresi
                     var (x, y) = HexMetrics.Center(cell.Q, cell.R, CellSize);
                     if (xz)
                     {
                         // Taş materyali: DB (master/per-color) > BoardView yedeği (Create3DXZ null'da Lit3DTransparent'a düşer)
                         var tileMat = db.HexMaterialForPalette(arrow.Palette) ?? TileMaterial3D;
                         float tileFootprint = Mathf.Clamp(1f - TileGap, 0.2f, 2f); // boşluk arttıkça taş küçülür
-                        var tv = TileView.Create3DXZ(transform, new Vector3(x, 0f, y), CellSize, color, HexMesh3D, tileMat, tileFootprint, TileThicknessY);
-                        var sv = SegmentView.Create3DXZ(transform, new Vector3(x, SurfaceY, y), CellSize, cell, segMat);
-                        if (CastShadows3D) { tv.SetCastShadows(true); sv.SetCastShadows(true); }
-                        _tiles[pos] = tv;
-                        _segments[pos] = sv;
+                        float dropY = cell.Layer * StackStepY; // gömülü katman: taş kalınlığı kadar aşağıda
+                        var tv = TileView.Create3DXZ(transform, new Vector3(x, -dropY, y), CellSize, color, HexMesh3D, tileMat, tileFootprint, TileThicknessY);
+                        var sv = SegmentView.Create3DXZ(transform, new Vector3(x, SurfaceY - dropY, y), CellSize, cell, segMat);
+                        if (cell.Layer == 0)
+                        {
+                            if (CastShadows3D) { tv.SetCastShadows(true); sv.SetCastShadows(true); }
+                            _tiles[pos] = tv;
+                            _segments[pos] = sv;
+                        }
+                        else
+                        {
+                            // gömülü: koyulaştır (üstü kapalı — kenar açılarında derinlik okunur), gölge kapalı
+                            float dim = DimFor(cell.Layer);
+                            tv.SetDim(dim);
+                            sv.SetDim(dim);
+                            if (!_buriedViews.TryGetValue(pos, out var stack))
+                                _buriedViews[pos] = stack = new List<(TileView, SegmentView)>(HexaLevel.MaxBuriedLayers);
+                            stack.Add((tv, sv));
+                            stack.Sort((p1, p2) => p1.tile.transform.localPosition.y.CompareTo(p2.tile.transform.localPosition.y) * -1); // üstteki önce (Layer artan)
+                        }
+                    }
+                    else if (cell.Layer > 0)
+                    {
+                        continue; // 2D modlar gömülü katman ÇİZMEZ (XZ'e özgü mekanik; mantık yine çalışır)
                     }
                     else if (useFbx3D)
                     {
@@ -195,7 +228,76 @@ namespace ArrowRotate.View
             foreach (Transform child in transform) Destroy(child.gameObject);
             _tiles.Clear();
             _segments.Clear();
+            _buriedViews.Clear();
             _ices.Clear();
+        }
+
+        // ── katman terfisi (görsel) ─────────────────────────────────────────────
+
+        /// <summary>Uçan okun görselini sözlükten ayırır (yok etme uçuş bitiminde) — aynı (q,r)'ye
+        /// terfi eden yeni görsel bağlanabilsin diye. Katman mekaniğinin görsel yarısı.</summary>
+        public TileView DetachTile((int q, int r) pos)
+        {
+            if (!_tiles.TryGetValue(pos, out var t)) return null;
+            _tiles.Remove(pos);
+            return t;
+        }
+
+        public SegmentView DetachSegment((int q, int r) pos)
+        {
+            if (!_segments.TryGetValue(pos, out var sv)) return null;
+            _segments.Remove(pos);
+            return sv;
+        }
+
+        /// <summary>(q,r)'deki gömülü görsel yığınının en üstünü yüzeye çıkarır (veri terfisi PromoteAt ile
+        /// ÖNCE yapılmış olmalı). Yükselme animasyonu delay sonra başlar; kalanlar bir katman yukarı kayar.</summary>
+        public void PromoteCellVisual((int q, int r) pos, float delay)
+        {
+            if (!_buriedViews.TryGetValue(pos, out var stack) || stack.Count == 0) return;
+
+            var top = stack[0];
+            stack.RemoveAt(0);
+            if (stack.Count == 0) _buriedViews.Remove(pos);
+
+            _tiles[pos] = top.tile;
+            _segments[pos] = top.seg;
+            if (CastShadows3D)
+            {
+                if (top.tile != null) top.tile.SetCastShadows(true);
+                if (top.seg != null) top.seg.SetCastShadows(true);
+            }
+            StartCoroutine(RiseRoutine(top.tile, top.seg, 0f, SurfaceY, DimFor(0), delay));
+
+            // kalan gömülüler bir katman yukarı (Layer veride zaten azaltıldı)
+            for (int i = 0; i < stack.Count; i++)
+            {
+                int layer = i + 1;
+                StartCoroutine(RiseRoutine(stack[i].tile, stack[i].seg,
+                    -layer * StackStepY, SurfaceY - layer * StackStepY, DimFor(layer), delay));
+            }
+        }
+
+        private IEnumerator RiseRoutine(TileView tile, SegmentView seg, float tileY, float segY, float dimTo, float delay)
+        {
+            if (delay > 0f) yield return new WaitForSeconds(delay);
+            Transform tt = tile != null ? tile.transform : null;
+            Transform st = seg != null ? seg.transform : null;
+            float tY0 = tt != null ? tt.localPosition.y : 0f;
+            float sY0 = st != null ? st.localPosition.y : 0f;
+            float dim0 = tile != null ? tile.Dim : 1f;
+            float t = 0f;
+            while (t < 1f)
+            {
+                t = Mathf.Min(1f, t + Time.deltaTime / RiseDuration);
+                float e = Easing.OutCubic(t);
+                if (tt != null) { var p = tt.localPosition; p.y = Mathf.Lerp(tY0, tileY, e); tt.localPosition = p; }
+                if (st != null) { var p = st.localPosition; p.y = Mathf.Lerp(sY0, segY, e); st.localPosition = p; }
+                float dim = Mathf.Lerp(dim0, dimTo, e);
+                if (tile != null) tile.SetDim(dim);
+                if (seg != null) seg.SetDim(dim);
+                yield return null;
+            }
         }
 
         // ── buz (SKILL.md §5) ──────────────────────────────────────────────────

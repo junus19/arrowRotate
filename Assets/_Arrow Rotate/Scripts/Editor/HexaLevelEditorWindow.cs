@@ -47,6 +47,7 @@ namespace ArrowRotate.EditorTools
         // ── Tool state ────────────────────────────────────────────────────────
         private Tool _tool = Tool.Draw;
         private int _paintPalette;
+        private int _activeLayer; // 0 = yüzey, 1..2 = gömülü — TÜM araçlar bu katmanda çalışır
         private Vector2 _toolsScroll;
 
         private readonly List<(int q, int r)> _drawPath = new List<(int, int)>();
@@ -65,6 +66,13 @@ namespace ArrowRotate.EditorTools
         private bool _fillFoldout;
         private int _fillDifficulty = 1;
         private int _fillSeed = 1000;
+        private bool _fillCustom;      // true = ok/katman/yayılma slider'ları; false = zorluk preset'i
+        private int _fillArrows = 5;
+        private int _fillLayers = 1;   // 1 = düz
+        private int _fillSpanning = 0; // parçaları farklı katmanda olacak ok sayısı
+        private int _fillIce = 0;
+        private int _fillBuriedMin = 1; // yayılan ok başına gömülü parça alt sınırı
+        private int _fillBuriedMax = 2; // ... üst sınırı
 
         // ── Stil sabitleri ────────────────────────────────────────────────────
         private static readonly Color CanvasBg = new Color(0.10f, 0.10f, 0.14f);
@@ -287,12 +295,23 @@ namespace ArrowRotate.EditorTools
         //  Veri yardımcıları — _selected.Cells / _selected.Arrows üzerinde
         // ════════════════════════════════════════════════════════════════════
 
-        private HexaCellSave CellAt(int q, int r)
+        /// <summary>AKTİF katmandaki hücre — araçların tümü bu katmanda çalışır.</summary>
+        private HexaCellSave CellAt(int q, int r) => CellAt(q, r, _activeLayer);
+
+        private HexaCellSave CellAt(int q, int r, int layer)
         {
             var cells = _selected.Cells;
             for (int i = 0; i < cells.Length; i++)
-                if (cells[i].Q == q && cells[i].R == r) return cells[i];
+                if (cells[i].Q == q && cells[i].R == r && cells[i].Layer == layer) return cells[i];
             return null;
+        }
+
+        /// <summary>(q,r)'deki TÜM katman hücreleri (palet komşuluğu gibi katmanlar-arası kontroller için).</summary>
+        private IEnumerable<HexaCellSave> CellsAt(int q, int r)
+        {
+            var cells = _selected.Cells;
+            for (int i = 0; i < cells.Length; i++)
+                if (cells[i].Q == q && cells[i].R == r) yield return cells[i];
         }
 
         private bool IsCellEmpty((int q, int r) p) => CellAt(p.q, p.r) == null;

@@ -14,8 +14,18 @@ namespace ArrowRotate.View
         private Shapes.RegularPolygon _poly; // Shapes2D modda dolu; renk/alfa buradan uygulanır
         private Color _color;
         private float _alpha = 1f;
+        private float _dim = 1f; // katman koyulaştırması (1 = yüzey, <1 = gömülü)
         private Coroutine _fade;
         private Vector3 _spinAxis = Vector3.forward; // vanish dönüş ekseni (XZ modda Y)
+
+        /// <summary>Katman koyulaştırma çarpanı (gömülü hücreler için; terfi animasyonunda 1'e döner).</summary>
+        public float Dim => _dim;
+
+        public void SetDim(float dim)
+        {
+            _dim = Mathf.Clamp01(dim);
+            SetAlpha(_alpha); // rengi _dim ile yeniden uygula
+        }
 
         /// <summary>Depth3D XZ: EP hexagon mesh'i XZ düzleminde (yatık), palet renginde. Fade/vanish material alfası ile.
         /// xzScale: yatay footprint çarpanı (hücre aralığı sabit → segment bağlantıları etkilenmez). thickness: Y kalınlık çarpanı.</summary>
@@ -179,8 +189,7 @@ namespace ArrowRotate.View
         private void SetAlpha(float a)
         {
             _alpha = a;
-            var c = _color;
-            c.a = a;
+            var c = new Color(_color.r * _dim, _color.g * _dim, _color.b * _dim, a);
             if (_poly != null) _poly.Color = c;
             else MeshFactory.SetColor(_renderer, c);
         }

@@ -33,6 +33,31 @@ namespace ArrowRotate.EditorTools
             GUILayout.Label(ToolHint(), EditorStyles.centeredGreyMiniLabel);
 
             EditorGUILayout.Space(6);
+            GUILayout.Label("Katman", EditorStyles.boldLabel);
+            int newLayer = GUILayout.SelectionGrid(_activeLayer,
+                new[] { "0 · Yüzey", "1 · Alt", "2 · Dip" }, 3);
+            if (newLayer != _activeLayer)
+            {
+                _activeLayer = newLayer;
+                CancelDrag();
+                _editCell = (int.MinValue, 0);
+                Repaint();
+                GUIUtility.ExitGUI();
+            }
+            if (_selected != null)
+            {
+                int c0 = 0, c1 = 0, c2 = 0;
+                foreach (var c in _selected.Cells)
+                {
+                    if (c.Layer == 0) c0++;
+                    else if (c.Layer == 1) c1++;
+                    else c2++;
+                }
+                GUILayout.Label($"Hücre: yüzey {c0} · alt {c1} · dip {c2} — araçlar seçili katmanda çalışır",
+                    EditorStyles.centeredGreyMiniLabel);
+            }
+
+            EditorGUILayout.Space(6);
             GUILayout.Label("Palet", EditorStyles.boldLabel);
             DrawPaletteSwatches();
 
@@ -113,7 +138,7 @@ namespace ArrowRotate.EditorTools
                 return;
             }
 
-            GUILayout.Label($"Hücre ({cell.Q}, {cell.R}) · Ok {cell.ArrowId} · {cell.Type}", EditorStyles.miniBoldLabel);
+            GUILayout.Label($"Hücre ({cell.Q}, {cell.R}) · Ok {cell.ArrowId} · {cell.Type} · Katman {cell.Layer}", EditorStyles.miniBoldLabel);
 
             EditorGUI.BeginChangeCheck();
             int newA = cell.Type == CellType.Tail
@@ -128,6 +153,20 @@ namespace ArrowRotate.EditorTools
                 cell.B = newB;
                 cell.Rot = newRot;
                 Dirty();
+            }
+
+            // hücreyi katmanlar arasında taşı (ok katmanlara yayılabilir); hedef katman doluysa reddedilir
+            EditorGUI.BeginChangeCheck();
+            int newCellLayer = EditorGUILayout.IntSlider("Katman", cell.Layer, 0, HexaLevel.MaxBuriedLayers);
+            if (EditorGUI.EndChangeCheck() && newCellLayer != cell.Layer)
+            {
+                if (CellAt(cell.Q, cell.R, newCellLayer) == null)
+                {
+                    Record("Change Cell Layer");
+                    cell.Layer = newCellLayer;
+                    Dirty();
+                }
+                else Debug.LogWarning($"[LevelEditor] ({cell.Q},{cell.R}) katman {newCellLayer} dolu — taşınamadı.");
             }
 
             var arrow = _selected.Arrows[cell.ArrowId];
@@ -186,11 +225,14 @@ namespace ArrowRotate.EditorTools
             {
                 for (int d = 0; d < 6; d++)
                 {
-                    var nb = CellAt(cell.Q + HexCoord.Dirs[d].dq, cell.R + HexCoord.Dirs[d].dr);
-                    if (nb != null && nb.ArrowId != cell.ArrowId)
+                    // katmanlar-arası: gömülü ok yüzeye çıkınca komşu olabileceği herkesle ayrışmalı
+                    foreach (var nb in CellsAt(cell.Q + HexCoord.Dirs[d].dq, cell.R + HexCoord.Dirs[d].dr))
                     {
-                        adj[cell.ArrowId].Add(nb.ArrowId);
-                        adj[nb.ArrowId].Add(cell.ArrowId);
+                        if (nb.ArrowId != cell.ArrowId)
+                        {
+                            adj[cell.ArrowId].Add(nb.ArrowId);
+                            adj[nb.ArrowId].Add(cell.ArrowId);
+                        }
                     }
                 }
             }
@@ -236,7 +278,7 @@ namespace ArrowRotate.EditorTools
                 {
                     var head = level.GetCell(arrow.HeadPos);
                     head.Rot = (head.Rot + rng.RangeInclusive(1, 5)) % 6;
-                    var save = CellAt(head.Q, head.R);
+                    var save = CellAt(head.Q, head.R, 0); // bağlı ok = tümü yüzeyde → head katman 0
                     save.Rot = head.Rot;
                 }
             }
@@ -258,10 +300,33 @@ namespace ArrowRotate.EditorTools
 
         private void DrawRandomFill()
         {
-            int idx = System.Array.IndexOf(FillDifficulties, _fillDifficulty);
-            if (idx < 0) idx = 0;
-            idx = EditorGUILayout.Popup("Zorluk", idx, FillDifficultyNames);
-            _fillDifficulty = FillDifficulties[idx];
+            _fillCustom = EditorGUILayout.ToggleLeft("Özel (ok / katman / yayılma)", _fillCustom);
+
+            if (_fillCustom)
+            {
+                _fillArrows = EditorGUILayout.IntSlider("Ok Sayısı", _fillArrows, 1, 20);
+                _fillLayers = EditorGUILayout.IntSlider("Katman", _fillLayers, 1, HexaLevel.MaxBuriedLayers + 1);
+                using (new EditorGUI.DisabledScope(_fillLayers <= 1))
+                    _fillSpanning = EditorGUILayout.IntSlider("Yayılan Ok", Mathf.Min(_fillSpanning, _fillArrows), 0, _fillArrows);
+                if (_fillLayers <= 1) _fillSpanning = 0; // düz levelda yayılma yok
+
+                // yayılan ok başına GÖMÜLÜ (yüzey altı) parça aralığı — yüzeydeki = uzunluk − gömülü
+                using (new EditorGUI.DisabledScope(_fillLayers <= 1 || _fillSpanning <= 0))
+                {
+                    _fillBuriedMin = EditorGUILayout.IntSlider("Gömülü Parça (min)", _fillBuriedMin, 1, 8);
+                    _fillBuriedMax = EditorGUILayout.IntSlider("Gömülü Parça (max)", _fillBuriedMax, 1, 8);
+                    if (_fillBuriedMax < _fillBuriedMin) _fillBuriedMax = _fillBuriedMin;
+                }
+
+                _fillIce = EditorGUILayout.IntSlider("Buzlu Ok", Mathf.Min(_fillIce, _fillArrows), 0, Mathf.Min(_fillArrows, 6));
+            }
+            else
+            {
+                int idx = System.Array.IndexOf(FillDifficulties, _fillDifficulty);
+                if (idx < 0) idx = 0;
+                idx = EditorGUILayout.Popup("Zorluk", idx, FillDifficultyNames);
+                _fillDifficulty = FillDifficulties[idx];
+            }
 
             EditorGUILayout.BeginHorizontal();
             _fillSeed = EditorGUILayout.IntField("Seed", _fillSeed);
@@ -269,20 +334,62 @@ namespace ArrowRotate.EditorTools
                 _fillSeed = Random.Range(1, 999999);
             EditorGUILayout.EndHorizontal();
 
-            EditorGUILayout.HelpBox("Seçili level'ın İÇERİĞİNİ prosedürel üretimle DEĞİŞTİRİR " +
-                                    "(scramble + buz dahil). Seed tekrarı aynı level'ı verir.", MessageType.None);
+            EditorGUILayout.HelpBox(_fillCustom
+                ? "Yayılan ok = parçaları farklı katmanlarda olan ok. Gömülü Parça min/max = yayılan ok başına " +
+                  "yüzey ALTINDAKI parça sayısı (yüzeydeki = uzunluk − gömülü; örn. gömülü 4 → uzunluk 7'de yüzeyde 3). " +
+                  "HEDEF'tir, üretim tutmazsa yaklaşır; gerçek dağılım konsola yazılır. Katman>1 kapsama+çözülebilirlik doğrulanır."
+                : "Seçili level'ın İÇERİĞİNİ prosedürel üretimle DEĞİŞTİRİR (scramble + buz dahil). Seed tekrarı aynı level'ı verir.",
+                MessageType.None);
 
             using (new EditorGUI.DisabledScope(_selected == null))
             {
                 if (GUILayout.Button("Random Fill"))
                 {
-                    var cfg = LevelConfig.ForLevel(_fillDifficulty);
-                    var level = LevelGenerator.Generate(_fillSeed, cfg);
-                    Record("Random Fill");
-                    _selected.FromHexaLevel(level, cfg.Radius);
-                    Dirty();
+                    var cfg = _fillCustom
+                        ? LevelConfig.ForCustom(_fillArrows, _fillLayers, _fillSpanning, _fillIce, _fillBuriedMin, _fillBuriedMax)
+                        : LevelConfig.ForLevel(_fillDifficulty);
+                    try
+                    {
+                        var level = LevelGenerator.Generate(_fillSeed, cfg);
+                        Record("Random Fill");
+                        _selected.FromHexaLevel(level, cfg.Radius);
+                        Dirty();
+                        if (_fillCustom && _fillLayers > 1) ReportSpanning(level);
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning($"[LevelEditor] Random Fill başarısız (seed {_fillSeed}) — farklı seed / daha az yayılan ok dene. {ex.Message}");
+                    }
                 }
             }
+        }
+
+        /// <summary>Üretilen levelda yayılan ok sayısı + katman başına toplam parça dağılımını konsola yazar.</summary>
+        private static void ReportSpanning(HexaLevel level)
+        {
+            int spanning = 0, maxLayer = 0;
+            var perLayer = new Dictionary<int, int>();
+            var spanDetail = new System.Text.StringBuilder();
+            foreach (var arrow in level.Arrows)
+            {
+                var seen = new Dictionary<int, int>(); // katman → bu okun o katmandaki parça sayısı
+                foreach (var pos in arrow.Cells)
+                {
+                    var c = level.GetArrowCell(arrow.ArrowId, pos);
+                    seen.TryGetValue(c.Layer, out int n); seen[c.Layer] = n + 1;
+                    perLayer.TryGetValue(c.Layer, out int t); perLayer[c.Layer] = t + 1;
+                    if (c.Layer > maxLayer) maxLayer = c.Layer;
+                }
+                if (seen.Count >= 2)
+                {
+                    spanning++;
+                    var parts = seen.OrderBy(kv => kv.Key).Select(kv => $"L{kv.Key}:{kv.Value}");
+                    spanDetail.Append($" [ok{arrow.ArrowId} {string.Join("/", parts)}]");
+                }
+            }
+            var dist = string.Join(", ", perLayer.OrderBy(kv => kv.Key).Select(kv => $"L{kv.Key}={kv.Value}"));
+            Debug.Log($"[LevelEditor] Katmanlı üretim: {level.Arrows.Count} ok, en derin katman {maxLayer}, " +
+                      $"yayılan ok: {spanning}. Parça dağılımı: {dist}. Yayılanlar:{spanDetail} (seed {level.Seed})");
         }
 
         // ── Doğrulama ─────────────────────────────────────────────────────────
@@ -314,13 +421,23 @@ namespace ArrowRotate.EditorTools
                 return problems;
             }
 
-            // çakışma + bölge
-            var seen = new HashSet<(int, int)>();
+            // çakışma (katman başına) + bölge + katman kuralları
+            var seen = new HashSet<(int, int, int)>();
             foreach (var c in data.Cells)
             {
-                if (!seen.Add((c.Q, c.R))) problems.Add($"Çakışma: ({c.Q},{c.R}) iki kez dolu.");
+                if (!seen.Add((c.Q, c.R, c.Layer))) problems.Add($"Çakışma: ({c.Q},{c.R}) katman {c.Layer} iki kez dolu.");
                 if (!HexCoord.InRegion(c.Q, c.R, data.Radius)) problems.Add($"({c.Q},{c.R}) bölge dışında (R={data.Radius}).");
                 if (c.ArrowId < 0 || c.ArrowId >= data.Arrows.Length) problems.Add($"({c.Q},{c.R}) geçersiz arrowId {c.ArrowId}.");
+                if (c.Layer < 0 || c.Layer > HexaLevel.MaxBuriedLayers) problems.Add($"({c.Q},{c.R}) geçersiz katman {c.Layer} (0..{HexaLevel.MaxBuriedLayers}).");
+            }
+
+            // gömülü hücrenin üstü dolu olmalı: katman L>0 → aynı (q,r)'de L-1 şart
+            // (üstü boş gömülü hücre ASLA yüzeye çıkamaz; katman boşluğu da yasak)
+            foreach (var c in data.Cells)
+            {
+                if (c.Layer <= 0) continue;
+                if (CellAt(c.Q, c.R, c.Layer - 1) == null)
+                    problems.Add($"Ok {c.ArrowId}: ({c.Q},{c.R}) katman {c.Layer} hücresinin üstünde katman {c.Layer - 1} yok — asla yüzeye çıkamaz.");
             }
 
             // yapı + bitişiklik (dizide ok sırası + kuyruk→head varsayılır)
@@ -338,39 +455,66 @@ namespace ArrowRotate.EditorTools
             }
             if (problems.Count > 0) return problems; // yapı bozuksa mantık kontrolleri anlamsız
 
-            // çözülebilirlik: rot=0 kopyada her ok bağlı olmalı
+            bool layered = data.Cells.Any(c => c.Layer > 0);
+
+            // çözülebilirlik: her okun a/b zinciri rot=0'da bağlanmalı. Ok gömülü olabileceği için
+            // OK BAŞINA mini level kurulur (yalnızca o okun hücreleri, hepsi yüzeyde) — katmandan bağımsız kontrol.
             var solved = data.ToHexaLevel();
             foreach (var cell in solved.Cells.Values) cell.Rot = 0;
-            foreach (var arrow in solved.Arrows)
-                if (!ConnectionTracer.Trace(solved, arrow.ArrowId).Connected)
-                    problems.Add($"Ok {arrow.ArrowId}: rot=0'da bağlanmıyor (a/b değerleri tutarsız).");
+            for (int a = 0; a < data.Arrows.Length; a++)
+            {
+                var mini = new HexaLevel();
+                for (int i = 0; i < data.Arrows.Length; i++)
+                    mini.Arrows.Add(new Arrow { ArrowId = i, Palette = data.Arrows[i].Palette });
+                foreach (var c in data.Cells.Where(c => c.ArrowId == a))
+                {
+                    mini.AddCell(new Cell { Q = c.Q, R = c.R, ArrowId = a, Type = c.Type, A = c.A, B = c.B, Rot = 0, Layer = 0 });
+                    mini.Arrows[a].Cells.Add((c.Q, c.R));
+                }
+                if (!ConnectionTracer.Trace(mini, a).Connected)
+                    problems.Add($"Ok {a}: rot=0'da bağlanmıyor (a/b değerleri tutarsız).");
+            }
 
-            // başlangıç karışıklığı: mevcut rot'larla bağlı ok olmamalı
+            // başlangıç karışıklığı: mevcut rot'larla bağlı ok olmamalı (gömülü ok zaten bağlanamaz)
             var current = data.ToHexaLevel();
             foreach (var arrow in current.Arrows)
                 if (ConnectionTracer.Trace(current, arrow.ArrowId).Connected)
                     problems.Add($"Ok {arrow.ArrowId}: level başında BAĞLI — Scramble kullan.");
 
-            // palet komşuluğu
+            // palet komşuluğu — KATMANLAR-ARASI: gömülü ok yüzeye çıkınca aynı paletli komşuyla
+            // yan yana gelebilir; bu yüzden komşuluk (q,r) uzayında tüm katman çiftlerine bakar
             foreach (var c in data.Cells)
             {
-                for (int d = 0; d < 6; d++)
+                bool flagged = false;
+                for (int d = 0; d < 6 && !flagged; d++)
                 {
-                    var nb = CellAt(c.Q + HexCoord.Dirs[d].dq, c.R + HexCoord.Dirs[d].dr);
-                    if (nb != null && nb.ArrowId != c.ArrowId &&
-                        data.Arrows[c.ArrowId].Palette == data.Arrows[nb.ArrowId].Palette)
+                    foreach (var nb in CellsAt(c.Q + HexCoord.Dirs[d].dq, c.R + HexCoord.Dirs[d].dr))
                     {
-                        problems.Add($"Palet ihlali: ok {c.ArrowId} ve {nb.ArrowId} aynı palette komşu — 'kopuk ok' bug'ı!");
-                        d = 6; // hücre başına bir uyarı yeter
+                        if (nb.ArrowId != c.ArrowId &&
+                            data.Arrows[c.ArrowId].Palette == data.Arrows[nb.ArrowId].Palette)
+                        {
+                            problems.Add($"Palet ihlali: ok {c.ArrowId} ve {nb.ArrowId} aynı palette komşu (katman {c.Layer}/{nb.Layer}) — 'kopuk ok' bug'ı!");
+                            flagged = true; // hücre başına bir uyarı yeter
+                            break;
+                        }
                     }
                 }
             }
 
-            // buz + DAG: çözülmüş halden engelleme grafiği → simülasyon
-            var blockedBy = BuildBlockedBy(solved, data.Radius);
-            var freeze = data.Arrows.Select(x => x.FreezeAt).ToArray();
-            if (!ExitSimulator.CanExitAll(blockedBy, freeze))
-                problems.Add("DEADLOCK: bu diziliş + buz eşikleriyle tüm oklar çıkamaz.");
+            // buz + engelleme: katmanlıysa DİNAMİK simülasyon (terfi eden hücre yeni engel olabilir),
+            // düz levelda klasik statik grafik + simülasyon
+            if (layered)
+            {
+                if (!ExitSimulator.CanExitAllLayered(data.ToHexaLevel()))
+                    problems.Add("DEADLOCK: bu diziliş + katmanlar + buz eşikleriyle tüm oklar çıkamaz.");
+            }
+            else
+            {
+                var blockedBy = BuildBlockedBy(solved, data.Radius);
+                var freeze = data.Arrows.Select(x => x.FreezeAt).ToArray();
+                if (!ExitSimulator.CanExitAll(blockedBy, freeze))
+                    problems.Add("DEADLOCK: bu diziliş + buz eşikleriyle tüm oklar çıkamaz.");
+            }
 
             return problems.Distinct().ToList();
         }

@@ -187,6 +187,14 @@ Ses/haptik: yalnızca `FxRequestEvent` (Rotate / Connect / Launch / Bounce / Ice
 - [x] **Uçuş/bounce 3D** (`FlightRenderer3D`): LineRenderer kaldırıldı; her frame pencere şeridi mesh üretimi + uçta aynı ok başı → tile segmentleriyle seamless. Canlı testte uçuş + zincirleme çıkış doğrulandı.
 - Kalan (XZ): buz görselleri (IceView XY'de; XZ'de Build atlıyor — mantık çalışıyor, görsel işaret yok) + ok başı boyu/kamera ince ayarı kullanıcı geri bildirimiyle.
 
+### Ek iş — Katman (Layer) mekaniği ✅ (2026-07-22)
+- [x] Çekirdek: `Cell.Layer`, `HexaLevel.Buried` yığını + `PromoteAt/GetArrowCell/IsFullySurfaced/AddCell`; Cells = yalnızca yüzey → tracer/ray/tap DEĞİŞMEDEN doğru (kısmen gömülü bağlanamaz). Tracer'a tail sahiplik koruması.
+- [x] Runtime: uçuşta detach + veri-anında terfi + görsel yükselme animasyonu (`PromoteCellVisual`/`RiseRoutine`); gömülü taş/segment gerçek derinlikte + koyu (XZ; 2D çizmez).
+- [x] Kayıt: `HexaCellSave.Layer` (varsayılan 0 — eski asset'ler uyumlu).
+- [x] Editör: katman seçici, aktif-katman araçları, kontur/koyu katman çizimi, denetçide Katman slider'ı, katman doğrulamaları + `CanExitAllLayered` dinamik simülasyon.
+- [x] Test: `LayerMechanicTests` 7 test; toplam 34/34 yeşil. Canlı doğrulama: gömülü mavi ok terfi etti, oynandı, Won=True.
+- Kalan: `LevelGenerator`'a katman desteği (istenirse) — şimdilik katmanlı leveller editörden elle.
+
 ### Faz 8 — SDK, build, cila (2 gün + süreklilik)
 - [ ] Native SDK'lar import edilmemiş: MAX (AppLovin), Adjust, GameAnalytics, Firebase + scripting define'ları (`MAX_ENABLED`, `ADJUST_ENABLED`…).
 - [ ] Analytics şeması: level_start/win (seed loglanır — spec §11 repro önerisi), rotate sayısı, süre, buz kırılmaları, blocked sayısı.

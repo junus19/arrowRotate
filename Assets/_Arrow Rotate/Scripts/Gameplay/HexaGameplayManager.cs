@@ -200,25 +200,35 @@ namespace ArrowRotate.Game
                 Board.GetSegment(ck)?.SetVisible(false);
             }
 
-            // taşlar kuyruk geçtikçe SIRAYLA yok olur
+            // Taşlar kuyruk geçtikçe SIRAYLA yok olur. Uçan okun görselleri sözlüklerden AYRILIR
+            // (detach) — çünkü altındaki katman terfi edince AYNI (q,r) anahtarına yeni görsel bağlanır.
+            // Terfi VERİDE anında (yeni yüzey hemen engel/tap olur), GÖRSELDE taş kaybolurken yükselir.
             float perCell = HexMetrics.Sqrt3 * s / FlightSpeed;
+            var dying = new List<GameObject>(cellKeys.Count * 2);
             for (int i = 0; i < cellKeys.Count; i++)
             {
-                Board.GetTile(cellKeys[i])?.Vanish(VanishStartDelay + i * perCell);
+                float d = VanishStartDelay + i * perCell;
+                var oldTile = Board.DetachTile(cellKeys[i]);
+                var oldSeg = Board.DetachSegment(cellKeys[i]);
+                if (oldSeg != null) dying.Add(oldSeg.gameObject);
+                if (oldTile != null) { oldTile.Vanish(d); dying.Add(oldTile.gameObject); }
+
+                if (_level.PromoteAt(cellKeys[i]) != null)
+                    Board.PromoteCellVisual(cellKeys[i], d + 0.2f);
             }
 
             if (Board.Is3DXZ)
                 FlightRenderer3D.Create(pts, s, FlightExtension, Board.SurfaceY, Board.ArrowMaterial3D)
-                    .Fly(FlightSpeed, () => OnFlightDone(arrow, cellKeys));
+                    .Fly(FlightSpeed, () => OnFlightDone(arrow, dying));
             else
                 FlightRenderer.Create(pts, s, FlightExtension, BoardView.OverlayZ)
-                    .Fly(FlightSpeed, () => OnFlightDone(arrow, cellKeys));
+                    .Fly(FlightSpeed, () => OnFlightDone(arrow, dying));
         }
 
-        private void OnFlightDone(Arrow arrow, List<(int q, int r)> cellKeys)
+        private void OnFlightDone(Arrow arrow, List<GameObject> dying)
         {
             arrow.State = ArrowState.Done;
-            foreach (var ck in cellKeys) Board.RemoveCellVisuals(ck);
+            foreach (var go in dying) if (go != null) Destroy(go);
             _pendingExit.Remove(arrow.ArrowId);
             ArrowExited?.Invoke(arrow.ArrowId);
 

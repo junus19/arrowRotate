@@ -38,8 +38,8 @@ namespace ArrowRotate.Integration
 
             foreach (var s in Cells) // ok sırası + kuyruk→head sıralı
             {
-                var cell = new Cell { Q = s.Q, R = s.R, ArrowId = s.ArrowId, Type = s.Type, A = s.A, B = s.B, Rot = s.Rot };
-                level.Cells[(s.Q, s.R)] = cell;
+                var cell = new Cell { Q = s.Q, R = s.R, ArrowId = s.ArrowId, Type = s.Type, A = s.A, B = s.B, Rot = s.Rot, Layer = s.Layer };
+                level.AddCell(cell); // Layer 0 → yüzey, 1..2 → gömülü yığın
                 level.Arrows[s.ArrowId].Cells.Add((s.Q, s.R));
                 if (s.Type == CellType.Head) level.Arrows[s.ArrowId].ExitDir = s.B;
             }
@@ -57,8 +57,8 @@ namespace ArrowRotate.Integration
                 Arrows[arrow.ArrowId] = new HexaArrowSave { Palette = arrow.Palette, FreezeAt = arrow.FreezeAt };
                 foreach (var pos in arrow.Cells)
                 {
-                    var c = level.GetCell(pos);
-                    cells.Add(new HexaCellSave { Q = c.Q, R = c.R, ArrowId = c.ArrowId, Type = c.Type, A = c.A, B = c.B, Rot = c.Rot });
+                    var c = level.GetArrowCell(arrow.ArrowId, pos); // yüzey ya da gömülü — okun kendi hücresi
+                    cells.Add(new HexaCellSave { Q = c.Q, R = c.R, ArrowId = c.ArrowId, Type = c.Type, A = c.A, B = c.B, Rot = c.Rot, Layer = c.Layer });
                 }
             }
             Cells = cells.ToArray();
@@ -75,6 +75,7 @@ namespace ArrowRotate.Integration
         public int A = -1; // lokal giriş kenarı (tail: -1)
         public int B;      // lokal çıkış kenarı / head: uçuş yönü
         public int Rot;    // 0-5 — başlangıç karışıklığı asset'te saklanır
+        public int Layer;  // 0 = yüzey (varsayılan → eski asset'ler uyumlu), 1..2 = gömülü katman
     }
 
     [System.Serializable]

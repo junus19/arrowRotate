@@ -300,6 +300,19 @@ namespace ArrowRotate.View
             return view;
         }
 
+        private float _dim = 1f; // katman koyulaştırması (XZ; gömülü segment soluk görünür)
+
+        /// <summary>Katman koyulaştırma çarpanı (gömülü hücre segmenti; terfi animasyonunda 1'e döner).</summary>
+        public float Dim => _dim;
+
+        public void SetDim(float dim)
+        {
+            _dim = Mathf.Clamp01(dim);
+            if (_meshRenderer3D == null) return; // yalnızca XZ yolu (2D modlar gömülü çizmez)
+            var c = HexaPalette.Segment;
+            MeshFactory.SetColor(_meshRenderer3D, new Color(c.r * _dim, c.g * _dim, c.b * _dim, c.a));
+        }
+
         /// <summary>XZ gölge: segment/ok'u caster yapar. ⚠ Materyal Transparent'sa URP gölge haritasına yazmaz.</summary>
         public void SetCastShadows(bool on)
         {

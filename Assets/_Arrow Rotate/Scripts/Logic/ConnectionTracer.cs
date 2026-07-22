@@ -30,7 +30,9 @@ namespace ArrowRotate.Logic
         {
             var arrow = level.Arrows[arrowId];
             var tail = level.GetCell(arrow.TailPos);
-            if (tail == null) return TraceResult.NotConnected;
+            // Sahiplik şart: katmanlı levelde okun tail'i gömülüyken aynı (q,r)'nin YÜZEYİNDE başka
+            // bir okun hücresi olabilir — onun B'siyle yürümek sahte bağlantı üretebilirdi.
+            if (tail == null || tail.ArrowId != arrowId) return TraceResult.NotConnected;
 
             var cur = tail;
             int outDir = tail.WorldB;

@@ -55,17 +55,41 @@ Saf C# katmanına (Core/Logic/Generation) MonoBehaviour/Unity API EKLENMEZ; test
 
 - **Boot.unity**: "Game Manager" objesindeki component `HexaGameManager : GameManager` ile değiştirildi (inspector'daki data referansları korunarak). `_gameConfig` → `Assets/_Arrow Rotate/Data/Hexa Game Config.asset`. Level sonu +25 coin burada verilir (`_coinRewardPerLevel` alanı).
 - **Game.unity**: yalnız "Hexa Arrows" GO (BoardView + HexaGameplayManager + TapController). Example kalıntıları (trigger'lar, kamera, ışık) silindi — kamera Boot'taki `CameraManager.GameplayCamera`.
-- **GUI.unity**: "Hexa HUD" GO (`HexaHudPanel`) — UI'ı runtime kurar, yalnız EventBus dinler.
+- **HUD (2026-07-22 değişti): `HexaHudPanel` artık UI'ı runtime KURMAZ — sahnedeki hazır hiyerarşiye bağlanır.** Yer: **Gameplay Panel.prefab** (GUI sahnesi) içindeki `Gameplay Items Container > Hexa HUD Panel > Bar > Timer/Moves/Chips`. Serialize alanlar prefab'da bağlı: `_bar` (göster/gizle kökü), `_timerText`, `_movesText` (TMP), `_chipsContainer` (GridLayoutGroup'lu Chips), `_chipTemplate` (opsiyonel — verilirse ok başına klonlanır ve şablon gizlenir; boşsa kod-içi daire çip fallback). Sadece EventBus dinler (gameplay'e referans yok). BuildChips container'ı temizleyip ok başına çip üretir → **editördeki örnek çipler runtime'da otomatik silinir**.
+  - ⚠ **Artık 2 ESKİ HexaHudPanel instance'ı kaldı** (GUI sahnesinde `Hexa HUD` standalone + `Gameplay Items Container/Hexa HUD Sample Prefab`). Üçü de EventBus'a abone → çakışma. Yalnızca `Hexa HUD Panel` kalmalı; diğer ikisi silinmeli/devre dışı bırakılmalı (kullanıcı temizleyecek).
 - `HexaGameState_Gameplay : GameState_Gameplay` gameplay state'ini değiştirir (Example deseni); `HexaLevelData : LevelData` hücre dizisini taşır (bkz. "Level içeriği ve formatı"), Scene alanı boş (Level.Load sahne yüklemez).
 - Build sırası: Boot → Game → GUI. `Assets/_Arrow Rotate/Scene/HexaSandbox.unity` = Gamebrain'siz izole test sahnesi (`HexaSandboxDriver`: TapCell/SolveArrow/SolveAll).
 
 ### Level içeriği ve formatı
 
 **Format (2026-07-13'te değişti): leveller asset'te TAM HÜCRE DİZİSİ olarak saklanır** (arrowJam deseni) — seed alanı kalktı, elle düzenlenebilir:
-- `HexaLevelData`: `Radius` + `HexaCellSave[]` (q, r, arrowId, type, a, b, **rot**) + `HexaArrowSave[]` (palette, freezeAt). `ToHexaLevel()` / `FromHexaLevel()` dönüşümleri.
+- `HexaLevelData`: `Radius` + `HexaCellSave[]` (q, r, arrowId, type, a, b, **rot**, **layer**) + `HexaArrowSave[]` (palette, freezeAt). `ToHexaLevel()` / `FromHexaLevel()` dönüşümleri.
 - **Cells dizisi invariant'ı:** ok sırasında ve her ok içinde kuyruk→head sıralı. Ardışık hücreler axial komşu.
 - **Rot'lar asset'te saklanır** — editördeki başlangıç dizilimi oyundakiyle birebir aynı; runtime scramble YOK.
 - `Data/Levels/HexaLevel_001..050.asset` → `Hexa Game Config._levels`. **Seed Browser** toplu tarama/ayıklama için durur; bake artık hücrelere yazar.
+
+### Katman (Layer) mekaniği — 2026-07-22
+
+Yüzeyin altında 2 katmana kadar gömülü hücre olabilir; üstteki taş temizlenince altındaki yüzeye çıkar. Oyuncu gömülü oka ulaşmak için önce üstünü kapatan okları çıkarmak zorundadır (derinlik).
+
+**Veri modeli (kilit tasarım):** `HexaLevel.Cells` SADECE yüzeyi (Layer 0) tutar; gömülüler `Buried[(q,r)]` yığınında (Layer artan, index 0 = sıradaki). Bu sayede `ConnectionTracer`/`RayScanner`/tap DEĞİŞMEDEN doğru davranır: kısmen gömülü ok kendiliğinden bağlanamaz, gömülü hücre ışın engeli değildir.
+- `Cell.Layer` (0=yüzey, 1..`HexaLevel.MaxBuriedLayers`=2 gömülü) · `AddCell` Layer'a göre yönlendirir · `PromoteAt(pos)` yüzey BOŞKEN en üsttekini terfi ettirir, kalanların Layer'ını azaltır · `GetArrowCell(id,pos)` yüzey+gömülü arar (oklar katmanlara YAYILABİLİR — kullanıcı kararı) · `IsFullySurfaced(arrow)`.
+- ⚠ `ConnectionTracer.Trace` tail SAHİPLİK kontrolü yapar (`tail.ArrowId != arrowId → NotConnected`) — gömülü okun tail pozisyonundaki yüzey hücresi BAŞKA okunsa sahte bağlantı üretebilirdi (yaşanmadan yakalanan bug).
+- **Terfi akışı (HexaGameplayManager.StartFlight):** hücre `Cells`'ten silinir → görseller `DetachTile/DetachSegment` ile sözlükten AYRILIR (aynı (q,r) anahtarına terfi eden bağlanacak; eskiler uçuş bitince yok edilir) → `PromoteAt` VERİDE anında (yeni yüzey hemen engel/tap olur) → `Board.PromoteCellVisual(pos, delay)` GÖRSELDE taş kaybolurken yükseltir.
+- **Görsel (yalnızca XZ; 2D modlar gömülü ÇİZMEZ):** gömülü taş+segment gerçek derinlikte (`y=-Layer·StackStepY`, StackStepY=taş kalınlığı) ve koyu (`LayerDimFactors` 1/0.55/0.35, `TileView/SegmentView.SetDim`); terfi = 0.4s OutCubic yükselme + renk açılma (`RiseRoutine`). Gömülüler gölge atmaz, terfi edince açılır.
+- **Kayıt:** `HexaCellSave.Layer` (varsayılan 0 → ESKİ ASSET'LER OTOMATİK UYUMLU).
+- **Doğrulama/simülasyon:** `ExitSimulator.CanExitAllLayered(level)` — dinamik sim (statik blockedBy grafiği yetmez: terfi eden hücre YENİ engel olabilir). Kural: ok çıkabilir ⇔ eşik dolu VE tam yüzeyde VE ışın temiz; çıkınca hücreler silinir + terfiler işlenir.
+- **Editörde:** Katman seçici (0·Yüzey / 1·Alt / 2·Dip) — TÜM araçlar aktif katmanda çalışır; canvas aktifi tam renk, derindekileri koyu, aktifi ÖRTEN üst katmanları kontur çizer. Edit denetçisinde hücre başına Katman slider'ı (dolu katmana taşıma reddedilir). Doğrulama ekleri: katman başına çakışma, "katman L'nin üstünde L-1 şart" (üstü boş gömülü asla çıkamaz), palet komşuluğu KATMANLAR-ARASI (terfi sonrası yan yana gelebilirler — AutoAssignPalettes de böyle), katmanlıysa deadlock kontrolü `CanExitAllLayered`.
+- Buz görselleri XZ'de zaten ertelenmişti; buz MANTIĞI katmanlarla çalışır (eşik kuralı aynı).
+- Testler: `LayerMechanicTests` (7 test: yönlendirme, terfi+kayma, kısmen gömülü bağlanamaz, terfi sonrası bağlanır, katmanlı sim çözülebilir/deadlock/terfi-engeli).
+
+**Katmanlı Random Fill üretimi (2026-07-22):** `LevelGenerator.GenerateLayered` (cfg.LayerCount>1'de otomatik seçilir; düz yol dokunulmadı). Editör Random Fill'de "Özel" modu: **Ok Sayısı · Katman (1-3) · Yayılan Ok · Buzlu Ok** slider'ları (`LevelConfig.ForCustom`).
+- **Kilit fikir — kolon-yığma:** hücreler (q,r) kolonuna yığılır; yerleştirme anında katman = kolonun mevcut yüksekliği (0=yüzey). Böylece KAPSAMA (alt katmanın üstü daima dolu) YAPI GEREĞİ garanti. "Flat" oklar yalnız boş kolonda yürür (hep katman 0); "spanning" oklar dolu kolona basıp gömülü hücre üretir → parçaları farklı katmanda.
+- Yayılan ok sayısı HEDEF (best-effort): son S ok flatlerden sonra yerleştirilip dolu kolona yönlendirilir; gerçekleşmezse retry, olmazsa daha az (konsola `ReportSpanning` gerçek sayıyı + katman dağılımını yazar). Testte ortalama hedefin ≥%100'ü tutuyor.
+- **Gömülü parça min/max (`BuriedMin`/`BuriedMax`):** yayılan ok başına yüzey ALTINDAKI (layer≥1) parça sayısı [min,max]'tan rastgele, `[1, len-1]`'e kırpılır (yüzeydeki = uzunluk − gömülü). `WalkLayered` buriedTarget'a göre yönlendirir: gömülü açığı varsa dolu kolona, doldu ise boş kolona. bmin=bmax=k → uzunluk yeten her yayılan okta TAM k gömülü (test edildi 60/60).
+- Çözülebilirlik `ExitSimulator.CanExitAllLayered` ile PAZARLIKSIZ doğrulanır (statik DAG değil — dinamik, terfi eden hücre yeni engel olabilir); tutmazsa seed atılır. Palet `AssignPalettesLayered` katmanlar-arası komşuluğa bakar. Scramble/ice `GetArrowCell` ile gömülü hücreye erişir (Cells'te değiller).
+- ⚠ Katman>1'de ScrambleLayered/BuildCellsLayered `level.GetCell` YERİNE `GetArrowCell` kullanmalı — gömülü hücre `Cells`'te yok, GetCell yüzeydeki BAŞKA okun hücresini döndürür.
+- Testler: `LayeredGeneratorTests` (5 test × 4 kombinasyon × 40 seed: çözülebilir, kapsama+katman-boşluğu yok, derinlik≤katman, yayılma hedefi, katmanlar-arası palet ayrımı). Toplam 39/39 yeşil.
 
 ### Level Editor (`Arrow Rotate ▸ Level Editor`)
 
@@ -89,9 +113,11 @@ Asıl level düzenleme aracı — arrowJam editörünün hex uyarlaması. Tüm d
 - **Ice** — okun FreezeAt'ini döndürür: 0→1→2→3→0.
 - **Edit** — hücre denetçisi: A/B/Rot slider'ları + ok'un Palet/Buz Eşiği; seçili HEAD'e ikinci tık uçuş yönünü döndürür (girişle aynı yöne gelirse bir daha atlar).
 
-**Butonlar:** *Paletleri Ata* = deterministik çizge boyaması (komşu oklara farklı palet, en az kullanılan tercih; çözemezse uyarı loglar). *Scramble* = tüm rot'lar rastgele + ok başına "bağlı kalmaz" garantisi (head rot bump, üreticiyle aynı algoritma). *Çöz* = tüm rot=0 (çözümü görsel kontrol için; kaydetmeden önce Scramble'la). *Random Fill* = zorluk satırı (1/2/3-4/5+) + seed → `LevelGenerator` çıktısını level'a yazar (scramble+buz dahil; aynı seed aynı level).
+**Butonlar:** *Paletleri Ata* = deterministik çizge boyaması (komşu oklara farklı palet, en az kullanılan tercih; katmanlar-arası; çözemezse uyarı loglar). *Scramble* = tüm rot'lar rastgele + ok başına "bağlı kalmaz" garantisi (head rot bump, üreticiyle aynı algoritma). *Çöz* = tüm rot=0 (çözümü görsel kontrol için; kaydetmeden önce Scramble'la). *Random Fill* iki mod: **preset** (zorluk 1/2/3-4/5+) veya **Özel** (Ok Sayısı · Katman 1-3 · Yayılan Ok · Buzlu Ok slider'ları → `LevelConfig.ForCustom`) + seed → `LevelGenerator.Generate` çıktısını level'a yazar. Katman>1'de kolon-yığma üretimi + `CanExitAllLayered` doğrulaması; gerçek yayılan ok sayısı konsola yazılır.
 
-**Doğrulama (panel altında canlı, tüm kontroller):** ① çakışma (aynı hücre iki kez) ② bölge dışı hücre ③ geçersiz arrowId ④ ok yapısı (≥2 hücre, ilk Tail/son Head/ara Mid) ⑤ bitişiklik (ardışık hücreler komşu) ⑥ çözülebilirlik (rot=0 kopyada her ok Trace bağlı) ⑦ başlangıç karışıklığı (mevcut rot'larla bağlı ok = ihlal) ⑧ palet komşuluğu ⑨ buz+DAG deadlock (`ExitSimulator`, engelleme grafiği çözülmüş halden `BuildBlockedBy` ile). Yapı bozuksa (①-⑤) mantık kontrolleri atlanır.
+**Katman seçici (editör):** Sağ panelde **0·Yüzey / 1·Alt / 2·Dip** — TÜM araçlar aktif katmanda çalışır. Canvas: aktif katman tam renk + beyaz segment, daha derin katmanlar koyu + soluk segment, aktifi ÖRTEN üst katmanlar renkli KONTUR (altındaki aktif hücre okunur). Draw/Erase/Move/Rotate/vb. `CellAt(q,r)` → aktif katmandaki hücre. Edit denetçisinde hücre başına **Katman** slider'ı (dolu katmana taşıma reddedilir).
+
+**Doğrulama (panel altında canlı, tüm kontroller):** ① çakışma (aynı hücre+KATMAN iki kez) ② bölge dışı hücre ③ geçersiz arrowId/katman ④ **katman kapsaması** (L>0 hücrenin üstünde L-1 şart — üstü boş gömülü asla çıkamaz) ⑤ ok yapısı (≥2 hücre, ilk Tail/son Head/ara Mid) ⑥ bitişiklik ⑦ çözülebilirlik (ok başına mini-level rot=0 Trace) ⑧ başlangıç karışıklığı ⑨ palet komşuluğu (KATMANLAR-ARASI) ⑩ deadlock — katmanlıysa `CanExitAllLayered` (dinamik), düzse `CanExitAll` (statik grafik). Yapı bozuksa mantık kontrolleri atlanır.
 
 **GameConfig üyeliği:** listedeki checkbox `Hexa Game Config._levels`'a ekler/çıkarır (SerializedObject ile; sıra = listedeki mevcut sıra + sona ekleme). Level silinirken config'ten de düşülür.
 

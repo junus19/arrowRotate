@@ -827,7 +827,7 @@ PlayerSettings:
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
-    Android: DOTWEEN
+    Android: DOTWEEN;MOREMOUNTAINS_NICEVIBRATIONS_INSTALLED;LETAI_TRUESHADOW
     EmbeddedLinux: DOTWEEN
     GameCoreScarlett: DOTWEEN
     GameCoreXboxOne: DOTWEEN

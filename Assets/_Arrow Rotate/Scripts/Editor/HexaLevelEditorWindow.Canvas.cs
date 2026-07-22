@@ -49,19 +49,39 @@ namespace ArrowRotate.EditorTools
                 }
             }
 
-            // ── Taşlar + segmentler ──────────────────────────────────────────
+            // ── Taşlar + segmentler (katmanlar DERİNDEN yüzeye) ──────────────
+            // aktif katman: tam renk + beyaz segment · aktiften derin: koyu + soluk segment ·
+            // aktifi ÖRTEN üst katmanlar: yalnızca renkli kontur (altındaki aktif hücre okunsun)
             var moveSet = _moving ? new HashSet<int>(_moveCellIdx) : null;
-            for (int i = 0; i < _selected.Cells.Length; i++)
+            for (int layer = HexaLevel.MaxBuriedLayers; layer >= 0; layer--)
             {
-                if (moveSet != null && moveSet.Contains(i)) continue; // kaynak gizlenir
-                var cell = _selected.Cells[i];
-                var center = CenterGui(cell.Q, cell.R, s, origin);
-                var palette = PaletteOf(cell.ArrowId);
-                DrawHexFilled(center, s * 0.91f, palette);
-                DrawPiece(center, s, cell, Color.white);
+                for (int i = 0; i < _selected.Cells.Length; i++)
+                {
+                    var cell = _selected.Cells[i];
+                    if (cell.Layer != layer) continue;
+                    if (moveSet != null && moveSet.Contains(i)) continue; // kaynak gizlenir
+                    var center = CenterGui(cell.Q, cell.R, s, origin);
+                    var palette = PaletteOf(cell.ArrowId);
+
+                    if (layer > _activeLayer) // aktiften derin — koyulaştır
+                    {
+                        float dim = layer == _activeLayer + 1 ? 0.45f : 0.28f;
+                        DrawHexFilled(center, s * 0.91f, new Color(palette.r * dim, palette.g * dim, palette.b * dim, 1f));
+                        DrawPiece(center, s, cell, new Color(1f, 1f, 1f, 0.30f));
+                    }
+                    else if (layer == _activeLayer)
+                    {
+                        DrawHexFilled(center, s * 0.91f, palette);
+                        DrawPiece(center, s, cell, Color.white);
+                    }
+                    else // aktifi örten üst katman — kontur
+                    {
+                        DrawHexOutline(center, s * 0.78f, new Color(palette.r, palette.g, palette.b, 0.9f), 2.5f);
+                    }
+                }
             }
 
-            // ── Buz katmanı ──────────────────────────────────────────────────
+            // ── Buz katmanı (yalnızca aktif katman hücrelerinde) ─────────────
             for (int a = 0; a < _selected.Arrows.Length; a++)
             {
                 if (_selected.Arrows[a].FreezeAt <= 0) continue;
@@ -70,6 +90,7 @@ namespace ArrowRotate.EditorTools
                 {
                     if (moveSet != null && moveSet.Contains(i)) continue;
                     var cell = _selected.Cells[i];
+                    if (cell.Layer != _activeLayer) continue;
                     DrawHexFilled(CenterGui(cell.Q, cell.R, s, origin), s * 0.91f, IceTint);
                 }
                 if (idx.Count > 0)
@@ -394,7 +415,7 @@ namespace ArrowRotate.EditorTools
             for (int i = 0; i < n; i++)
             {
                 var p = _drawPath[i];
-                var save = new HexaCellSave { Q = p.q, R = p.r, ArrowId = arrowId, Rot = 0 };
+                var save = new HexaCellSave { Q = p.q, R = p.r, ArrowId = arrowId, Rot = 0, Layer = _activeLayer };
                 if (i == 0) // kuyruk — sürükleme başı
                 {
                     save.Type = CellType.Tail;
@@ -443,7 +464,7 @@ namespace ArrowRotate.EditorTools
                 var c = _selected.Cells[i];
                 var t = (c.Q + _moveOffset.q, c.R + _moveOffset.r);
                 if (!InRegion(t)) return false;
-                var occupied = CellAt(t.Item1, t.Item2);
+                var occupied = CellAt(t.Item1, t.Item2, c.Layer); // hücrenin KENDİ katmanında çakışma
                 if (occupied != null && occupied.ArrowId != _moveArrowId) return false;
             }
             return true;
