@@ -17,6 +17,11 @@ namespace ArrowRotate.View
         private float _dim = 1f; // katman koyulaştırması (1 = yüzey, <1 = gömülü)
         private Coroutine _fade;
         private Vector3 _spinAxis = Vector3.forward; // vanish dönüş ekseni (XZ modda Y)
+        private bool _isXZ;           // XZ modu → disintegration efekti uygulanır
+        private float _cellSize = 1f; // parçacık ölçekleri için S
+
+        /// <summary>XZ'de taş yok olurken parçalanma (disintegration) parçacık patlaması. false = eski scale+spin+fade.</summary>
+        public static bool UseDisintegrate = true;
 
         /// <summary>Katman koyulaştırma çarpanı (gömülü hücreler için; terfi animasyonunda 1'e döner).</summary>
         public float Dim => _dim;
@@ -49,6 +54,8 @@ namespace ArrowRotate.View
             view._renderer = mr;
             view._color = color;
             view._spinAxis = Vector3.up; // XZ'de vanish dönüşü Y ekseni
+            view._isXZ = true;
+            view._cellSize = s;
             MeshFactory.SetColor(mr, color);
             return view;
         }
@@ -145,6 +152,23 @@ namespace ArrowRotate.View
         {
             if (delay > 0f) yield return new WaitForSeconds(delay);
             if (_fade != null) { StopCoroutine(_fade); _fade = null; }
+
+            if (_isXZ && UseDisintegrate)
+            {
+                // parçalanma: taş rengi küçük parçalar dışa savrulup dönerek düşer + söner; taş hızlı kaybolur
+                SpawnDisintegration(transform.position, _color, _cellSize);
+                float startAlphaD = _alpha; float td = 0f; const float durD = 0.14f;
+                while (td < 1f)
+                {
+                    td = Mathf.Min(1f, td + Time.deltaTime / durD);
+                    transform.localScale *= 0.9f;                 // hafif büzülüp
+                    SetAlpha(startAlphaD * (1f - td));            // sönerek yerini parçalara bırakır
+                    yield return null;
+                }
+                gameObject.SetActive(false);
+                yield break;
+            }
+
             const float dur = 0.45f;
             Vector3 startScale = transform.localScale;
             float startAlpha = _alpha; // saydamlaşmış taş geri parlamasın
@@ -159,6 +183,103 @@ namespace ArrowRotate.View
                 yield return null;
             }
             gameObject.SetActive(false);
+        }
+
+        // ── disintegration (parçalanma) parçacık patlaması ──
+        private static Material _pieceMat;
+        private static Material PieceMat
+        {
+            get
+            {
+                if (_pieceMat != null) return _pieceMat;
+                var sh = Shader.Find("ArrowRotate/Trail"); // texture × parçacık rengi, alpha blend
+                if (sh == null) return null;
+                _pieceMat = new Material(sh) { name = "TilePiece (runtime)" };
+                _pieceMat.SetTexture("_MainTex", PieceTexture);
+                return _pieceMat;
+            }
+        }
+
+        private static Texture2D _pieceTex;
+        private static Texture2D PieceTexture
+        {
+            get
+            {
+                if (_pieceTex != null) return _pieceTex;
+                const int w = 16; // dolu kare (küçük soft kenar) → "parça" hissi
+                var tex = new Texture2D(w, w, TextureFormat.RGBA32, false) { name = "TilePiece", filterMode = FilterMode.Bilinear };
+                for (int y = 0; y < w; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    float ex = Mathf.Min(x, w - 1 - x), ey = Mathf.Min(y, w - 1 - y);
+                    float a = Mathf.Clamp01(Mathf.Min(ex, ey)); // 1px yumuşak kenar
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+                }
+                tex.Apply();
+                _pieceTex = tex;
+                return _pieceTex;
+            }
+        }
+
+        /// <summary>Verilen konumda taş rengi parçacık patlaması: dışa savrulur, döner, yerçekimiyle düşer, söner.</summary>
+        private static void SpawnDisintegration(Vector3 worldPos, Color color, float s)
+        {
+            var mat = PieceMat;
+            if (mat == null) return;
+
+            var go = new GameObject("Disintegrate");
+            go.transform.position = worldPos;
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            var main = ps.main;
+            main.loop = false;
+            main.playOnAwake = false;
+            main.duration = 0.4f;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.4f, 0.75f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(2.5f * s, 6f * s);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.14f * s, 0.34f * s);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.startColor = new Color(color.r, color.g, color.b, 1f);
+            main.gravityModifier = 2.2f;   // savrulup düşerler
+            main.maxParticles = 48;
+
+            var emission = ps.emission;
+            emission.enabled = true;
+            emission.rateOverTime = 0f;
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)18) });
+
+            var shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Hemisphere; // taş üstünden yukarı+dışa
+            shape.radius = 0.35f * s;
+
+            var rot = ps.rotationOverLifetime;
+            rot.enabled = true;
+            rot.z = new ParticleSystem.MinMaxCurve(-6f, 6f); // tumbling
+
+            var col = ps.colorOverLifetime;
+            col.enabled = true;
+            var grad = new Gradient();
+            grad.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.55f), new GradientAlphaKey(0f, 1f) });
+            col.color = new ParticleSystem.MinMaxGradient(grad);
+
+            var sol = ps.sizeOverLifetime;
+            sol.enabled = true;
+            sol.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 0.15f)));
+
+            var psr = go.GetComponent<ParticleSystemRenderer>();
+            psr.sharedMaterial = mat;
+            psr.renderMode = ParticleSystemRenderMode.Billboard;
+            psr.sortingOrder = 4;
+            psr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            psr.receiveShadows = false;
+
+            ps.Play();
+            Destroy(go, 1.2f); // ömür + pay sonra kendini temizler
         }
 
         /// <summary>Ok bağlandı: taş saydamlaşır, segment zeminde asılı kalır.</summary>

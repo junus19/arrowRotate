@@ -15,6 +15,8 @@ namespace ArrowRotate.EditorTools
     public partial class HexaLevelEditorWindow
     {
         private const float Sqrt3 = 1.7320508f;
+        // Nested önizleme ölçeği — runtime BoardView.NestScale varsayılanıyla eşleşmeli (katman başına çarpan).
+        private const float NestPreviewScale = 0.5f;
 
         private void DrawCanvasPanel()
         {
@@ -50,7 +52,8 @@ namespace ArrowRotate.EditorTools
             }
 
             // ── Taşlar + segmentler (katmanlar DERİNDEN yüzeye) ──────────────
-            // aktif katman: tam renk + beyaz segment · aktiften derin: koyu + soluk segment ·
+            // aktif katman: tam renk + beyaz segment · aktiften derin: İÇTE küçük hexagon
+            // (runtime Nested görselinin önizlemesi — gerçek renk, segment GİZLİ) ·
             // aktifi ÖRTEN üst katmanlar: yalnızca renkli kontur (altındaki aktif hücre okunsun)
             var moveSet = _moving ? new HashSet<int>(_moveCellIdx) : null;
             for (int layer = HexaLevel.MaxBuriedLayers; layer >= 0; layer--)
@@ -63,11 +66,12 @@ namespace ArrowRotate.EditorTools
                     var center = CenterGui(cell.Q, cell.R, s, origin);
                     var palette = PaletteOf(cell.ArrowId);
 
-                    if (layer > _activeLayer) // aktiften derin — koyulaştır
+                    if (layer > _activeLayer) // aktiften derin — İÇTE küçük hexagon (Nested önizleme)
                     {
-                        float dim = layer == _activeLayer + 1 ? 0.45f : 0.28f;
-                        DrawHexFilled(center, s * 0.91f, new Color(palette.r * dim, palette.g * dim, palette.b * dim, 1f));
-                        DrawPiece(center, s, cell, new Color(1f, 1f, 1f, 0.30f));
+                        float nf = Mathf.Pow(NestPreviewScale, layer - _activeLayer);
+                        DrawHexFilled(center, s * 0.91f * nf, palette);               // gerçek palet rengi
+                        DrawHexOutline(center, s * 0.91f * nf, new Color(0f, 0f, 0f, 0.35f), 1.5f); // ince kenar → yüzeyden ayrışsın
+                        // segment GİZLİ (nested'de ok pasif) — çizilmez
                     }
                     else if (layer == _activeLayer)
                     {

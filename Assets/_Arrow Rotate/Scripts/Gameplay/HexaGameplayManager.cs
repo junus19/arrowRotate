@@ -233,7 +233,7 @@ namespace ArrowRotate.Game
             }
 
             if (Board.Is3DXZ)
-                FlightRenderer3D.Create(pts, s, FlightExtension, Board.SurfaceY, Board.ArrowMaterial3D)
+                FlightRenderer3D.Create(pts, s, FlightExtension, Board.SurfaceY, Board.ArrowMaterial3D, HexaPalette.ForPalette(arrow.Palette), Board.TrailSprites)
                     .Fly(FlightSpeed, () => OnFlightDone(arrow, dying));
             else
                 FlightRenderer.Create(pts, s, FlightExtension, BoardView.OverlayZ)
@@ -312,7 +312,7 @@ namespace ArrowRotate.Game
                 ArrowBlocked?.Invoke(arrow.ArrowId);
             };
             if (Board.Is3DXZ)
-                FlightRenderer3D.Create(pts, s, hitDist + 1.2f * s, Board.SurfaceY, Board.ArrowMaterial3D)
+                FlightRenderer3D.Create(pts, s, hitDist + 1.2f * s, Board.SurfaceY, Board.ArrowMaterial3D, HexaPalette.ForPalette(arrow.Palette))
                     .Bounce(hitDist, BounceDuration, onBounceDone);
             else
                 FlightRenderer.Create(pts, s, hitDist + 1.2f * s, BoardView.OverlayZ)

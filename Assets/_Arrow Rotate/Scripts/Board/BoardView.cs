@@ -16,6 +16,10 @@ namespace ArrowRotate.View
         Shapes2D  // Shapes kütüphanesi: yuvarlatılmış RegularPolygon taşlar + Polyline oklar
     }
 
+    /// <summary>Gömülü (alt katman) hücrenin gösterimi. StackedBelow: altta tam boy (yükselerek çıkar).
+    /// Nested: üstteki taşın İÇİNDE küçük hexagon, segmenti gizli — üst temizlenince büyüyüp aktifleşir.</summary>
+    public enum BuriedVisualStyle { StackedBelow, Nested }
+
     public class BoardView : MonoBehaviour
     {
         public const float TileZ = 0f;
@@ -36,6 +40,8 @@ namespace ArrowRotate.View
         public Material TileMaterial3D;
         [Tooltip("Ok materyali — YEDEK. Öncelik HexaColorDatabase.SegmentMaterial; boşsa buraya, o da boşsa Lit3DTransparent.")]
         public Material ArrowMaterial3D;
+        [Tooltip("Uçuş particle izi sprite'ları — ok çıkarken arkadan random spawn edilir (Circle/Star/Square). Boşsa kod-içi daire.")]
+        public Sprite[] TrailSprites;
         [Tooltip("Taşlar arası BOŞLUK (S oranı). BÜYÜK değer = büyük boşluk. Footprint = 1 − TileGap. Hücre aralığı sabit (segment bağlantıları etkilenmez); taşları küçültüp aralarında görsel gap açar (örtüşme/z-fight'ı önler). 0 = mesh'in doğal boşluğu, 0.1 belirgin boşluk.")]
         [Range(0f, 0.6f)] public float TileGap = 0f;
         [Tooltip("Taş kalınlık (Y) çarpanı — puck yüksekliği. Mesh merkez pivotlu, hem üste hem alta büyür. 1 = mesh'in doğal kalınlığı, 1.5 = %50 kalın.")]
@@ -63,20 +69,39 @@ namespace ArrowRotate.View
         [Tooltip("CameraPrefab boşsa kullanılacak arka plan rengi")]
         public Color CameraBackground = new Color(0x9B / 255f, 0xA9 / 255f, 0xD1 / 255f); // #9BA9D1
 
+        [Header("Gömülü katman görseli")]
+        [Tooltip("StackedBelow = alt katman taşı altta, tam boy (yükselerek çıkar). Nested = üstteki taşın İÇİNDE küçük hexagon, segmenti gizli (üst temizlenince büyüyüp aktifleşir).")]
+        public BuriedVisualStyle BuriedStyle = BuriedVisualStyle.Nested;
+        [Tooltip("Nested stilde iç hexagonun ölçek çarpanı (katman başına üs alınır: L1=×0.5, L2=×0.25).")]
+        [Range(0.2f, 0.8f)] public float NestScale = 0.5f;
+        [Tooltip("Nested iç hexagonun üstünün dış taşın üst yüzeyine göre ekstra yüksekliği (CellSize oranı). 0 = tam hizalı (gömülü), küçük + değer = ucu hafif taşar. Dış okun segmenti üstte görünür kalsın diye küçük tutulur.")]
+        [Range(-0.1f, 0.3f)] public float NestRaise = 0.02f;
+
         private readonly Dictionary<(int q, int r), TileView> _tiles = new Dictionary<(int, int), TileView>();
         private readonly Dictionary<(int q, int r), SegmentView> _segments = new Dictionary<(int, int), SegmentView>();
-        // Gömülü katman görselleri: (q,r) → Layer artan sırada (index 0 = Layer 1 = sıradaki terfi). Yalnızca XZ.
-        private readonly Dictionary<(int q, int r), List<(TileView tile, SegmentView seg)>> _buriedViews
-            = new Dictionary<(int, int), List<(TileView, SegmentView)>>();
+        // Gömülü katman görselleri: (q,r) → Layer ARTAN sırada (index 0 = Layer 1 = sıradaki terfi). Yalnızca XZ.
+        private readonly Dictionary<(int q, int r), List<(TileView tile, SegmentView seg, int layer)>> _buriedViews
+            = new Dictionary<(int, int), List<(TileView, SegmentView, int)>>();
         private readonly Dictionary<int, IceView> _ices = new Dictionary<int, IceView>();
         private HexaLevel _level;
 
-        // Katman görsel sabitleri: koyulaştırma çarpanı (index = Layer) ve yükselme süresi
-        private static readonly float[] LayerDimFactors = { 1f, 0.55f, 0.35f };
+        // Katman koyulaştırma çarpanı (index = Layer). Kullanıcı kararı (2026-07-22): alt katmanlar GERÇEK
+        // palet rengiyle görünsün, siyah/koyu olmasın → hepsi 1 (koyulaştırma yok). Derinlik zaten
+        // geometrik Y-offset + üstteki taşın örtmesiyle okunuyor. Koyulaştırma istenirse buradan ayarla.
+        private static readonly float[] LayerDimFactors = { 1f, 1f, 1f };
         private const float RiseDuration = 0.4f;
 
         /// <summary>Bir katmanın dünya-Y adımı: taş kalınlığı (katmanlar üst üste yaslanır).</summary>
         public float StackStepY => HexMesh3D != null ? HexMesh3D.bounds.size.y * TileThicknessY * CellSize : 0f;
+
+        /// <summary>Yüzey taşının üst yüzeyinin dünya-Y'si (Nested iç hexagon bunun ÜSTÜNE oturur).</summary>
+        private float TileTopY => HexMesh3D != null ? HexMesh3D.bounds.max.y * TileThicknessY * CellSize : 0f;
+
+        /// <summary>Yüzey taşının tam localScale'i (Nested büyüme hedefi).</summary>
+        private Vector3 FullTileScale
+        {
+            get { float f = Mathf.Clamp(1f - TileGap, 0.2f, 2f); return new Vector3(CellSize * f, CellSize * TileThicknessY, CellSize * f); }
+        }
 
         private static float DimFor(int layer)
             => LayerDimFactors[Mathf.Clamp(layer, 0, LayerDimFactors.Length - 1)];
@@ -110,9 +135,9 @@ namespace ArrowRotate.View
                         // Taş materyali: DB (master/per-color) > BoardView yedeği (Create3DXZ null'da Lit3DTransparent'a düşer)
                         var tileMat = db.HexMaterialForPalette(arrow.Palette) ?? TileMaterial3D;
                         float tileFootprint = Mathf.Clamp(1f - TileGap, 0.2f, 2f); // boşluk arttıkça taş küçülür
-                        float dropY = cell.Layer * StackStepY; // gömülü katman: taş kalınlığı kadar aşağıda
-                        var tv = TileView.Create3DXZ(transform, new Vector3(x, -dropY, y), CellSize, color, HexMesh3D, tileMat, tileFootprint, TileThicknessY);
-                        var sv = SegmentView.Create3DXZ(transform, new Vector3(x, SurfaceY - dropY, y), CellSize, cell, segMat);
+                        // yüzey baseline: taş y=0, segment y=SurfaceY (gömülüde aşağıda ayarlanır)
+                        var tv = TileView.Create3DXZ(transform, new Vector3(x, 0f, y), CellSize, color, HexMesh3D, tileMat, tileFootprint, TileThicknessY);
+                        var sv = SegmentView.Create3DXZ(transform, new Vector3(x, SurfaceY, y), CellSize, cell, segMat);
                         if (cell.Layer == 0)
                         {
                             if (CastShadows3D) { tv.SetCastShadows(true); sv.SetCastShadows(true); }
@@ -121,14 +146,29 @@ namespace ArrowRotate.View
                         }
                         else
                         {
-                            // gömülü: koyulaştır (üstü kapalı — kenar açılarında derinlik okunur), gölge kapalı
-                            float dim = DimFor(cell.Layer);
-                            tv.SetDim(dim);
-                            sv.SetDim(dim);
+                            if (BuriedStyle == BuriedVisualStyle.Nested)
+                            {
+                                // ÜSTTEKİ taşın İÇİNDE küçük hexagon; segment GİZLİ (üst temizlenince büyür+aktifleşir).
+                                // İç taş dış taşa GÖMÜLÜ oturur: üstü dış yüzeyle ~hizalı (NestRaise kadar taşar),
+                                // gövdesi dış taşın içinde → dış okun segmenti üstte görünür kalır.
+                                float nf = Mathf.Pow(NestScale, cell.Layer);
+                                tv.transform.localScale *= nf;
+                                float innerHalfUp = HexMesh3D.bounds.max.y * TileThicknessY * CellSize * nf; // iç taşın merkez→üst yarısı
+                                var tp = tv.transform.localPosition;
+                                tp.y = TileTopY - innerHalfUp + NestRaise * CellSize; // üstü dış yüzeye ~hizalı
+                                tv.transform.localPosition = tp;
+                                sv.SetVisible(false);
+                            }
+                            else // StackedBelow: altta tam boy, koyulaştırma yok (gerçek renk)
+                            {
+                                float dropY = cell.Layer * StackStepY;
+                                var tp = tv.transform.localPosition; tp.y = -dropY; tv.transform.localPosition = tp;
+                                var spp = sv.transform.localPosition; spp.y = SurfaceY - dropY; sv.transform.localPosition = spp;
+                            }
                             if (!_buriedViews.TryGetValue(pos, out var stack))
-                                _buriedViews[pos] = stack = new List<(TileView, SegmentView)>(HexaLevel.MaxBuriedLayers);
-                            stack.Add((tv, sv));
-                            stack.Sort((p1, p2) => p1.tile.transform.localPosition.y.CompareTo(p2.tile.transform.localPosition.y) * -1); // üstteki önce (Layer artan)
+                                _buriedViews[pos] = stack = new List<(TileView, SegmentView, int)>(HexaLevel.MaxBuriedLayers);
+                            stack.Add((tv, sv, cell.Layer));
+                            stack.Sort((p1, p2) => p1.layer.CompareTo(p2.layer)); // Layer artan → index 0 = sıradaki terfi (Layer 1)
                         }
                     }
                     else if (cell.Layer > 0)
@@ -267,14 +307,72 @@ namespace ArrowRotate.View
                 if (top.tile != null) top.tile.SetCastShadows(true);
                 if (top.seg != null) top.seg.SetCastShadows(true);
             }
-            StartCoroutine(RiseRoutine(top.tile, top.seg, 0f, SurfaceY, DimFor(0), delay));
 
-            // kalan gömülüler bir katman yukarı (Layer veride zaten azaltıldı)
-            for (int i = 0; i < stack.Count; i++)
+            if (BuriedStyle == BuriedVisualStyle.Nested)
             {
-                int layer = i + 1;
-                StartCoroutine(RiseRoutine(stack[i].tile, stack[i].seg,
-                    -layer * StackStepY, SurfaceY - layer * StackStepY, DimFor(layer), delay));
+                // iç hexagon büyür (küçük→tam boy), yüzeye oturur, segment görünür+aktif olur
+                StartCoroutine(NestGrowRoutine(top.tile, top.seg, delay));
+                // kalan iç katmanlar bir kademe büyür (Layer veride azaltıldı)
+                for (int i = 0; i < stack.Count; i++)
+                {
+                    int layer = i + 1;
+                    float nf = Mathf.Pow(NestScale, layer);
+                    StartCoroutine(NestRescaleRoutine(stack[i].tile, nf, delay));
+                }
+            }
+            else
+            {
+                StartCoroutine(RiseRoutine(top.tile, top.seg, 0f, SurfaceY, DimFor(0), delay));
+                // kalan gömülüler bir katman yukarı (Layer veride zaten azaltıldı)
+                for (int i = 0; i < stack.Count; i++)
+                {
+                    int layer = i + 1;
+                    StartCoroutine(RiseRoutine(stack[i].tile, stack[i].seg,
+                        -layer * StackStepY, SurfaceY - layer * StackStepY, DimFor(layer), delay));
+                }
+            }
+        }
+
+        /// <summary>Nested iç hexagon terfisi: küçük→tam boy büyür, y yüzeye iner, segment açılır.</summary>
+        private IEnumerator NestGrowRoutine(TileView tile, SegmentView seg, float delay)
+        {
+            if (delay > 0f) yield return new WaitForSeconds(delay);
+            if (seg != null) seg.SetVisible(true); // segment büyümeyle birlikte belirsin
+            Transform tt = tile != null ? tile.transform : null;
+            Transform st = seg != null ? seg.transform : null;
+            Vector3 tScale0 = tt != null ? tt.localScale : Vector3.one;
+            Vector3 tScaleTo = FullTileScale;
+            float tY0 = tt != null ? tt.localPosition.y : 0f;
+            float sY0 = st != null ? st.localPosition.y : 0f;
+            float t = 0f;
+            while (t < 1f)
+            {
+                t = Mathf.Min(1f, t + Time.deltaTime / RiseDuration);
+                float e = Easing.OutBack(t);
+                if (tt != null)
+                {
+                    tt.localScale = Vector3.LerpUnclamped(tScale0, tScaleTo, e);
+                    var p = tt.localPosition; p.y = Mathf.LerpUnclamped(tY0, 0f, Mathf.Clamp01(e)); tt.localPosition = p;
+                }
+                if (st != null) { var p = st.localPosition; p.y = Mathf.LerpUnclamped(sY0, SurfaceY, Mathf.Clamp01(e)); st.localPosition = p; }
+                yield return null;
+            }
+        }
+
+        /// <summary>Kalan iç katmanları yeni ölçek faktörüne yumuşakça getirir (terfi sonrası bir kademe büyürler).</summary>
+        private IEnumerator NestRescaleRoutine(TileView tile, float factor, float delay)
+        {
+            if (delay > 0f) yield return new WaitForSeconds(delay);
+            Transform tt = tile != null ? tile.transform : null;
+            if (tt == null) yield break;
+            Vector3 s0 = tt.localScale;
+            Vector3 sTo = FullTileScale * factor;
+            float t = 0f;
+            while (t < 1f)
+            {
+                t = Mathf.Min(1f, t + Time.deltaTime / RiseDuration);
+                tt.localScale = Vector3.Lerp(s0, sTo, Easing.OutCubic(t));
+                yield return null;
             }
         }
 

@@ -1,39 +1,40 @@
-Shader "ArrowRotate/RainbowVertex"
+Shader "ArrowRotate/Trail"
 {
-    // Gradient-texture shader'ı (URP unlit). Kaydırma C#'ta yapılır: FlightRenderer3D her frame
-    // UV.x'i (ok'a göreli mesafe − zaman·hız) olarak yazar → gradient ok boyunca AKAR (strobe yok).
-    // Shader düz olarak UV'den örnekler; _GradientTex değiştirilerek farklı gradientler denenir.
+    // Particle izi için basit URP unlit TRANSPARENT shader: _MainTex × per-particle COLOR (vertex color).
+    // ParticleSystem UV + parçacık rengini (colorOverLifetime alfa dahil) besler; alpha-blend ile sönerek gider.
     Properties
     {
-        [MainTexture] _GradientTex ("Gradient", 2D) = "white" {}
-        _Glow ("Glow", Float) = 1.0
+        [MainTexture] _MainTex ("Texture", 2D) = "white" {}
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" "Queue"="Geometry" }
+        Tags { "RenderType"="Transparent" "Queue"="Transparent" "RenderPipeline"="UniversalPipeline" "IgnoreProjector"="True" }
+        Blend SrcAlpha OneMinusSrcAlpha
+        ZWrite Off
+        Cull Off
         Pass
         {
-            Name "Unlit"
-            Cull Off
+            Name "TrailUnlit"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            TEXTURE2D(_GradientTex);
-            SAMPLER(sampler_GradientTex);
-            float _Glow;
+            TEXTURE2D(_MainTex);
+            SAMPLER(sampler_MainTex);
 
             struct Attributes
             {
                 float4 positionOS : POSITION;
                 float2 uv         : TEXCOORD0;
+                float4 color      : COLOR;
             };
 
             struct Varyings
             {
                 float4 positionHCS : SV_POSITION;
                 float2 uv          : TEXCOORD0;
+                float4 color       : COLOR;
             };
 
             Varyings vert (Attributes IN)
@@ -41,13 +42,14 @@ Shader "ArrowRotate/RainbowVertex"
                 Varyings OUT;
                 OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
                 OUT.uv = IN.uv;
+                OUT.color = IN.color;
                 return OUT;
             }
 
             half4 frag (Varyings IN) : SV_Target
             {
-                half4 c = SAMPLE_TEXTURE2D(_GradientTex, sampler_GradientTex, IN.uv);
-                return half4(c.rgb * _Glow, c.a);
+                half4 tex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv);
+                return tex * IN.color;
             }
             ENDHLSL
         }

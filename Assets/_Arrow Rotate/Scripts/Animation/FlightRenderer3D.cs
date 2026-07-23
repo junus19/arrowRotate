@@ -14,61 +14,87 @@ namespace ArrowRotate.View
     public class FlightRenderer3D : MonoBehaviour
     {
         // ── gökkuşağı juice (yalnız TEMİZ çıkışta; bounce'ta KAPALI) ──
-        // UV.x OK'A GÖRELİ (uçan kuyruğa uzaklık) yazılır — dünya pozisyonuna DEĞİL. Yoksa ok hızlı
-        // uçarken sabit uzaysal bantların içinden geçip strobe/flash olurdu. Kaydırmayı shader _Time ile yapar.
-        private const float RainbowUVScale = 0.33f; // dünya birimi → uv (tam gradient her ~3 birimde)
+        // UV = DÜNYA POZİSYONUNUN UÇUŞ YÖNÜNE İZDÜŞÜMÜ × freq. ZAMAN KAYDIRMASI YOK — renk değişimi
+        // tamamen yılanın HAREKETİNDEN gelir (tek hareket → temiz his). Bantlar harekete diktir; yılan
+        // ilerledikçe dünyada sabit duran bantların içinden geçer, renkler gövde boyunca akar.
+        // ⚠ freq düşük tutulmalı: renk değişim hızı = flightSpeed(≈25.9 u/s) × freq. 0.09 → ~2.3 tur/sn (iyi).
+        // Yüksek freq → hızlı uçuşta strobe (yaşandı). x ve z ikisi de exitDir üzerinden doğru katkı verir.
+        private const float RainbowWorldFreq = 0.09f;
 
         private List<Vector2> _pts;   // planar yol (+uzatma); planar (x,y) → dünya (X,Z)
         private float[] _cum;
         private float _total, _bodyLen;
         private float _s;
+        private Vector2 _exitDir;     // uçuş yönü (planar, normalize) — dünya→UV izdüşüm ekseni
         private MeshFilter _stripMF;
         private MeshFilter _headMF;
         private MeshRenderer _stripMR, _headMR;
         private Transform _head;
         private float _headLen;
         private bool _rainbow;        // yalnız Fly() açar (bounce'ta kapalı → engel varsa efekt yok)
+        private Color _paletteColor = Color.white; // çıkan okun palet rengi → gradient buradan türer
+        private Material _fxMat;      // uçuş başına materyal (kendi gradient texture'ı)
+        private Texture2D _fxTex;     // uçuş başına gradient texture (palet renk ailesi)
 
-        private static Material _rainbowMat;
-        private static Material RainbowMat
+        /// <summary>Ok gövdesi palet-renk gradient'i olsun mu? false = beyaz kalır. Particle iz denemesinde
+        /// beyaz istendi; true yapılınca palet gradient geri gelir (ikisi birlikte de çalışır).</summary>
+        public static bool UseColorGradient = false;
+
+        // ── particle izi (ok çıkarken arkadan random şekilli parçacıklar) ──
+        private bool _trail;          // yalnız Fly() açar (bounce'ta iz yok)
+        private readonly List<ParticleSystem> _psList = new List<ParticleSystem>(); // sprite başına bir PS; emit'te random seçilir
+        private Sprite[] _trailSprites;
+        private float _emitTimer, _nextEmitGap;
+        private const float TrailGapMin = 0.012f, TrailGapMax = 0.035f; // random emit aralığı (sn) — daha sık
+        private const float TrailLateralSpread = 0.3f; // uçuş yönüne DİK random savrulma (±, × S) — hafif serpilme
+
+        private static Shader _trailShader;
+        private static Shader TrailShader => _trailShader != null ? _trailShader
+            : (_trailShader = Shader.Find("ArrowRotate/Trail"));
+
+        // sprite → materyal önbelleği (sprite seti sabit; materyaller session boyunca paylaşılır, leak yok)
+        private static readonly Dictionary<Texture, Material> _trailMats = new Dictionary<Texture, Material>();
+        private static Material TrailMatFor(Texture tex)
         {
-            get
-            {
-                if (_rainbowMat != null) return _rainbowMat;
-                var sh = Shader.Find("ArrowRotate/RainbowVertex");
-                if (sh == null) return null; // shader yoksa gökkuşağı devre dışı
-                _rainbowMat = new Material(sh) { name = "ArrowRainbow (runtime)" };
-                _rainbowMat.SetFloat("_Glow", 1f);
-                _rainbowMat.SetFloat("_ScrollSpeed", 0.5f);
-                _rainbowMat.SetTexture("_GradientTex", RainbowGradient);
-                return _rainbowMat;
-            }
+            if (TrailShader == null || tex == null) return null;
+            if (_trailMats.TryGetValue(tex, out var m) && m != null) return m;
+            m = new Material(TrailShader) { name = "ArrowTrail (runtime)" };
+            m.SetTexture("_MainTex", tex);
+            _trailMats[tex] = m;
+            return m;
         }
 
-        /// <summary>Değiştirilebilir gradient texture — varsayılan HSV gökkuşağı (256×1, wrap Repeat).
-        /// İleride farklı gradient denemek için bu texture'ı değiştir (veya RainbowMat._GradientTex ata).</summary>
-        private static Texture2D _rainbowGradient;
-        private static Texture2D RainbowGradient
+        private static Shader _fxShader;
+        private static Shader FxShader => _fxShader != null ? _fxShader
+            : (_fxShader = Shader.Find("ArrowRotate/RainbowVertex")); // yoksa null → beyaz fallback
+
+        // ── palet renginden 2-3 tonlu geçiş üretici ──
+        private const float HueShift = 0.08f; // renk ailesi genişliği (kırmızı→turuncu ~+0.08 hue)
+
+        /// <summary>Palet renginden DİKİŞSİZ (palindrom) 256×1 gradient: base ↔ (hue+HueShift, biraz parlak).
+        /// Palindrom sayesinde wrap Repeat'te kusursuz döner → dünya-pozisyonu kaydırmasıyla renk ailesi
+        /// içinde salınır (ör. kırmızı↔turuncu), tam gökkuşağı DEĞİL.</summary>
+        private static Texture2D BuildPaletteGradient(Color baseCol)
         {
-            get
+            Color.RGBToHSV(baseCol, out float h, out float s, out float v);
+            var low = Color.HSVToRGB(h, s, v);
+            var high = Color.HSVToRGB(Mathf.Repeat(h + HueShift, 1f), Mathf.Clamp01(s * 0.9f), Mathf.Clamp01(v * 1.12f));
+            const int w = 256;
+            var tex = new Texture2D(w, 1, TextureFormat.RGBA32, false)
             {
-                if (_rainbowGradient != null) return _rainbowGradient;
-                const int w = 256;
-                var tex = new Texture2D(w, 1, TextureFormat.RGBA32, false)
-                {
-                    name = "RainbowGradient",
-                    wrapMode = TextureWrapMode.Repeat,   // kaydırma kusursuz döner (hue 1==0)
-                    filterMode = FilterMode.Bilinear,
-                };
-                for (int x = 0; x < w; x++)
-                    tex.SetPixel(x, 0, Color.HSVToRGB(x / (float)w, 0.95f, 1f));
-                tex.Apply();
-                _rainbowGradient = tex;
-                return _rainbowGradient;
+                name = "PaletteGradient", wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Bilinear,
+            };
+            for (int x = 0; x < w; x++)
+            {
+                float t = x / (float)(w - 1);
+                float p = t < 0.5f ? t * 2f : (1f - t) * 2f; // palindrom → uçlar eşit (dikişsiz)
+                tex.SetPixel(x, 0, Color.Lerp(low, high, p));
             }
+            tex.Apply();
+            return tex;
         }
 
-        public static FlightRenderer3D Create(List<(float x, float y)> pathPts, float s, float extension, float surfaceY, Material mat)
+        public static FlightRenderer3D Create(List<(float x, float y)> pathPts, float s, float extension, float surfaceY, Material mat, Color paletteColor, Sprite[] trailSprites = null)
         {
             var go = new GameObject("Flight3D");
             go.transform.position = new Vector3(0f, surfaceY, 0f);
@@ -81,6 +107,9 @@ namespace ArrowRotate.View
             var dirExt = (last - pts[pts.Count - 2]).normalized;
             pts.Add(last + dirExt * extension);
             fr._pts = pts;
+            fr._exitDir = dirExt; // dünya→UV izdüşüm ekseni (bantlar bu yöne dik)
+            fr._paletteColor = paletteColor;
+            fr._trailSprites = trailSprites;
 
             fr._cum = new float[pts.Count];
             for (int i = 1; i < pts.Count; i++)
@@ -114,24 +143,107 @@ namespace ArrowRotate.View
             MeshFactory.SetColor(fr._headMR, HexaPalette.Segment);
             fr._head = headGo.transform;
 
+            fr.BuildTrail(go);
             fr.SetOffset(0f);
             return fr;
         }
 
+        /// <summary>Sprite başına bir ParticleSystem kurar (emit KAPALI; Fly'da random aralıkla random PS'e elle
+        /// emit → şekiller karışık gelir). Farklı texture'lı sprite'lar tek materyalde karışamadığı için ayrı PS.
+        /// TrailSprites boşsa tek PS + kod-içi daire. Her PS: random rotation + random tint/alfa + söner.</summary>
+        private void BuildTrail(GameObject parent)
+        {
+            _psList.Clear();
+            if (_trailSprites != null && _trailSprites.Length > 0)
+            {
+                foreach (var sp in _trailSprites)
+                {
+                    if (sp == null) continue;
+                    var m = TrailMatFor(sp.texture);
+                    if (m != null) MakePS(parent, m);
+                }
+            }
+            if (_psList.Count == 0) // fallback: kod-içi daire
+            {
+                var m = TrailMatFor(ArrowRotate.UI.UiSprites.Circle.texture);
+                if (m != null) MakePS(parent, m);
+            }
+        }
+
+        private void MakePS(GameObject parent, Material mat)
+        {
+            var psGo = new GameObject("Trail");
+            psGo.transform.SetParent(parent.transform, false);
+            var ps = psGo.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            var main = ps.main;
+            main.loop = true;
+            main.playOnAwake = false;
+            main.simulationSpace = ParticleSystemSimulationSpace.World; // bırakılan parçacık yerinde kalır → iz
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.6f, 1.3f);
+            main.startSpeed = 0f;                                        // yerinde durur, sadece söner
+            main.startSize = new ParticleSystem.MinMaxCurve(0.22f * _s, 0.4f * _s);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f); // random dönüş (radyan)
+            // random tint (hafif) + random alfa: iki renk arası → parçacık başına ton/alfa çeşitlenir
+            main.startColor = new ParticleSystem.MinMaxGradient(
+                new Color(1f, 1f, 1f, 0.7f), new Color(0.86f, 0.92f, 1f, 1f));
+            main.maxParticles = 400;
+
+            var emission = ps.emission;
+            emission.enabled = true;
+            emission.rateOverTime = 0f;   // otomatik değil — Fly'da random aralıkla Emit
+            emission.rateOverDistance = 0f;
+
+            var shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 0.12f * _s;
+
+            var col = ps.colorOverLifetime;
+            col.enabled = true;
+            var grad = new Gradient();
+            grad.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.35f), new GradientAlphaKey(0f, 1f) });
+            col.color = new ParticleSystem.MinMaxGradient(grad); // startColor'ı ÇARPAR → random alfa peak korunur, sonra söner
+
+            var sol = ps.sizeOverLifetime;
+            sol.enabled = true;
+            var sizeCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 0.4f));
+            sol.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+
+            var psr = psGo.GetComponent<ParticleSystemRenderer>();
+            psr.sharedMaterial = mat;
+            psr.renderMode = ParticleSystemRenderMode.Billboard;
+            psr.sortingOrder = 3;
+            psr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            psr.receiveShadows = false;
+
+            ps.Play();
+            _psList.Add(ps);
+        }
+
         public void Fly(float speed, Action onDone)
         {
-            EnableRainbow(); // temiz çıkış → gökkuşağı (bounce bunu çağırmaz, beyaz kalır)
+            if (UseColorGradient) EnableRainbow(); // temiz çıkış → palet gradient'i (kapalıysa ok beyaz kalır)
+            _trail = _psList.Count > 0;            // particle izi (bounce bunu açmaz)
+            _nextEmitGap = UnityEngine.Random.Range(TrailGapMin, TrailGapMax);
             StartCoroutine(FlyRoutine(speed, onDone));
         }
 
-        /// <summary>Strip+ok başını gökkuşağı materyaline çevirir (shader varsa). Yalnız Fly'da çağrılır.</summary>
+        /// <summary>Strip+ok başını palet-renk gradient materyaline çevirir (shader varsa). Yalnız Fly'da.
+        /// Uçuş başına kendi materyali + texture'ı (palet renginden) — OnDestroy'da temizlenir.</summary>
         private void EnableRainbow()
         {
-            var rb = RainbowMat;
-            if (rb == null) return; // shader yok → beyaz kalır
+            if (FxShader == null) return; // shader yok → beyaz kalır
+            _fxTex = BuildPaletteGradient(_paletteColor);
+            _fxMat = new Material(FxShader) { name = "ArrowFx (runtime)" };
+            _fxMat.SetFloat("_Glow", 1f);
+            _fxMat.SetTexture("_GradientTex", _fxTex);
             _rainbow = true;
-            _stripMR.sharedMaterial = rb;
-            _headMR.sharedMaterial = rb;
+            _stripMR.sharedMaterial = _fxMat;
+            _headMR.sharedMaterial = _fxMat;
             SetOffset(0f); // UV'leri hemen yaz
         }
 
@@ -144,8 +256,22 @@ namespace ArrowRotate.View
                 SetOffset(d);
                 yield return null;
             }
+            DetachTrail(); // kalan parçacıklar sönene dek yaşasın (Flight3D yok edilince silinmesin)
             Destroy(gameObject);
             onDone?.Invoke();
+        }
+
+        /// <summary>İz sistemlerini Flight3D'den ayırır, emisyonu durdurur, kalan parçacıklar sönünce yok eder.</summary>
+        private void DetachTrail()
+        {
+            foreach (var ps in _psList)
+            {
+                if (ps == null) continue;
+                ps.transform.SetParent(null, true);
+                ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                Destroy(ps.gameObject, ps.main.startLifetime.constantMax + 0.2f);
+            }
+            _psList.Clear();
         }
 
         public void Bounce(float hitDist, float duration, Action onDone) => StartCoroutine(BounceRoutine(hitDist, duration, onDone));
@@ -199,28 +325,45 @@ namespace ArrowRotate.View
 
             if (_rainbow)
             {
-                // referans: uçan kuyruğun dünya konumu — UV.x buna GÖRE (okla taşınır, strobe olmaz).
-                // Kaydırmayı shader _Time ile yapar; burada yalnız ok'a göreli UV yazılır.
-                var tp = PointAt(tailL);
-                var refW = transform.TransformPoint(new Vector3(tp.x, 0f, tp.y));
+                // UV = dünya pozisyonunun uçuş yönüne izdüşümü (ZAMAN YOK) — renk değişimi hareketten gelir.
                 if (_stripMF.gameObject.activeSelf && _stripMF.sharedMesh != null)
-                    WriteRainbowUV(_stripMF.sharedMesh, _stripMF.transform, refW);
+                    WriteRainbowUV(_stripMF.sharedMesh, _stripMF.transform);
                 if (_headMF.sharedMesh != null)
-                    WriteRainbowUV(_headMF.sharedMesh, _head, refW);
+                    WriteRainbowUV(_headMF.sharedMesh, _head);
+            }
+
+            // particle izi: random aralıkta okun KUYRUĞUNDA (arka uç) RANDOM bir şekil bırak → gövdenin ARKASINDA
+            // kalır (baş=ön uçta emit edilirse gövdenin altında kalıyordu). Sim World → yerinde kalıp söner.
+            if (_trail && _psList.Count > 0)
+            {
+                _emitTimer += Time.deltaTime;
+                if (_emitTimer >= _nextEmitGap)
+                {
+                    _emitTimer = 0f;
+                    _nextEmitGap = UnityEngine.Random.Range(TrailGapMin, TrailGapMax);
+                    var tp = PointAt(tailL); // kuyruğun (arka ucun) planar konumu
+                    // uçuş yönüne DİK yanal savrulma (ok yukarı giderse ±x): perp = (-exitDir.y, exitDir.x)
+                    var perp = new Vector2(-_exitDir.y, _exitDir.x);
+                    float lat = UnityEngine.Random.Range(-TrailLateralSpread, TrailLateralSpread) * _s;
+                    var tailWorld = transform.TransformPoint(new Vector3(tp.x + perp.x * lat, 0f, tp.y + perp.y * lat));
+                    var ep = new ParticleSystem.EmitParams { position = tailWorld };
+                    _psList[UnityEngine.Random.Range(0, _psList.Count)].Emit(ep, 1); // random şekil (Circle/Star/Square)
+                }
             }
         }
 
-        /// <summary>Mesh UV.x'ini OK'A GÖRELİ (refW=kuyruğa uzaklık × ölçek) yazar; UV.y=0.5 (tek satır gradient).
-        /// Strip ve ok başı AYNI refW → gradient kesintisiz, okla taşınır. Shader UV.x'i _Time ile kaydırır.</summary>
-        private static void WriteRainbowUV(Mesh m, Transform tf, Vector3 refW)
+        /// <summary>Mesh UV.x'ini dünya pozisyonunun UÇUŞ YÖNÜNE (_exitDir) izdüşümü × freq yazar; UV.y=0.5.
+        /// Zaman yok — bantlar dünyada sabit ve harekete dik; yılan ilerledikçe içlerinden geçer → renkler
+        /// gövde boyunca AKAR (tek hareket kaynağı). Strip+ok başı AYNI dünya eşlemesi → kesintisiz.</summary>
+        private void WriteRainbowUV(Mesh m, Transform tf)
         {
             var verts = m.vertices;
             var uvs = new Vector2[verts.Length];
             for (int i = 0; i < verts.Length; i++)
             {
                 var w = tf.TransformPoint(verts[i]);
-                float d = Vector3.Distance(w, refW); // kuyruktan ok boyunca uzaklık
-                uvs[i] = new Vector2(d * RainbowUVScale, 0.5f);
+                float proj = w.x * _exitDir.x + w.z * _exitDir.y; // dünya(x,z) · uçuş yönü
+                uvs[i] = new Vector2(proj * RainbowWorldFreq, 0.5f);
             }
             m.uv = uvs;
         }
@@ -257,6 +400,8 @@ namespace ArrowRotate.View
         private void OnDestroy()
         {
             if (_stripMF != null && _stripMF.sharedMesh != null) Destroy(_stripMF.sharedMesh);
+            if (_fxMat != null) Destroy(_fxMat);   // uçuş başına materyal + texture (leak olmasın)
+            if (_fxTex != null) Destroy(_fxTex);
         }
     }
 }
