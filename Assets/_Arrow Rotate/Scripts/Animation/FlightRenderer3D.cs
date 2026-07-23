@@ -13,13 +13,60 @@ namespace ArrowRotate.View
     /// </summary>
     public class FlightRenderer3D : MonoBehaviour
     {
+        // ── gökkuşağı juice (yalnız TEMİZ çıkışta; bounce'ta KAPALI) ──
+        // UV.x OK'A GÖRELİ (uçan kuyruğa uzaklık) yazılır — dünya pozisyonuna DEĞİL. Yoksa ok hızlı
+        // uçarken sabit uzaysal bantların içinden geçip strobe/flash olurdu. Kaydırmayı shader _Time ile yapar.
+        private const float RainbowUVScale = 0.33f; // dünya birimi → uv (tam gradient her ~3 birimde)
+
         private List<Vector2> _pts;   // planar yol (+uzatma); planar (x,y) → dünya (X,Z)
         private float[] _cum;
         private float _total, _bodyLen;
         private float _s;
         private MeshFilter _stripMF;
+        private MeshFilter _headMF;
+        private MeshRenderer _stripMR, _headMR;
         private Transform _head;
         private float _headLen;
+        private bool _rainbow;        // yalnız Fly() açar (bounce'ta kapalı → engel varsa efekt yok)
+
+        private static Material _rainbowMat;
+        private static Material RainbowMat
+        {
+            get
+            {
+                if (_rainbowMat != null) return _rainbowMat;
+                var sh = Shader.Find("ArrowRotate/RainbowVertex");
+                if (sh == null) return null; // shader yoksa gökkuşağı devre dışı
+                _rainbowMat = new Material(sh) { name = "ArrowRainbow (runtime)" };
+                _rainbowMat.SetFloat("_Glow", 1f);
+                _rainbowMat.SetFloat("_ScrollSpeed", 0.5f);
+                _rainbowMat.SetTexture("_GradientTex", RainbowGradient);
+                return _rainbowMat;
+            }
+        }
+
+        /// <summary>Değiştirilebilir gradient texture — varsayılan HSV gökkuşağı (256×1, wrap Repeat).
+        /// İleride farklı gradient denemek için bu texture'ı değiştir (veya RainbowMat._GradientTex ata).</summary>
+        private static Texture2D _rainbowGradient;
+        private static Texture2D RainbowGradient
+        {
+            get
+            {
+                if (_rainbowGradient != null) return _rainbowGradient;
+                const int w = 256;
+                var tex = new Texture2D(w, 1, TextureFormat.RGBA32, false)
+                {
+                    name = "RainbowGradient",
+                    wrapMode = TextureWrapMode.Repeat,   // kaydırma kusursuz döner (hue 1==0)
+                    filterMode = FilterMode.Bilinear,
+                };
+                for (int x = 0; x < w; x++)
+                    tex.SetPixel(x, 0, Color.HSVToRGB(x / (float)w, 0.95f, 1f));
+                tex.Apply();
+                _rainbowGradient = tex;
+                return _rainbowGradient;
+            }
+        }
 
         public static FlightRenderer3D Create(List<(float x, float y)> pathPts, float s, float extension, float surfaceY, Material mat)
         {
@@ -41,36 +88,52 @@ namespace ArrowRotate.View
             fr._total = fr._cum[fr._cum.Length - 1];
             fr._bodyLen = fr._total - extension;
 
+            // BEYAZ başla (bounce beyaz kalır). Temiz çıkışta Fly() gökkuşağına çevirir.
             var material = mat != null ? mat : MeshFactory.Lit3DTransparent;
 
             var stripGo = new GameObject("Body");
             stripGo.transform.SetParent(go.transform, false);
             fr._stripMF = stripGo.AddComponent<MeshFilter>();
-            var smr = stripGo.AddComponent<MeshRenderer>();
-            smr.sharedMaterial = material;
-            smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            smr.receiveShadows = false;
-            MeshFactory.SetColor(smr, HexaPalette.Segment);
+            fr._stripMR = stripGo.AddComponent<MeshRenderer>();
+            fr._stripMR.sharedMaterial = material;
+            fr._stripMR.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            fr._stripMR.receiveShadows = false;
+            MeshFactory.SetColor(fr._stripMR, HexaPalette.Segment);
 
             fr._headLen = SegmentMesh3D.HeadLength * s;
             var headGo = new GameObject("Head");
             headGo.transform.SetParent(go.transform, false);
-            var hmf = headGo.AddComponent<MeshFilter>();
-            hmf.sharedMesh = SegmentMesh3D.BuildArrowhead(
+            fr._headMF = headGo.AddComponent<MeshFilter>();
+            fr._headMF.sharedMesh = SegmentMesh3D.BuildArrowhead(
                 fr._headLen, SegmentMesh3D.HeadHalfWidth * s,
                 SegmentMesh3D.Height * s, SegmentMesh3D.Fillet * s, SegmentMesh3D.HeadCornerRadius * s);
-            var hmr = headGo.AddComponent<MeshRenderer>();
-            hmr.sharedMaterial = material;
-            hmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            hmr.receiveShadows = false;
-            MeshFactory.SetColor(hmr, HexaPalette.Segment);
+            fr._headMR = headGo.AddComponent<MeshRenderer>();
+            fr._headMR.sharedMaterial = material;
+            fr._headMR.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            fr._headMR.receiveShadows = false;
+            MeshFactory.SetColor(fr._headMR, HexaPalette.Segment);
             fr._head = headGo.transform;
 
             fr.SetOffset(0f);
             return fr;
         }
 
-        public void Fly(float speed, Action onDone) => StartCoroutine(FlyRoutine(speed, onDone));
+        public void Fly(float speed, Action onDone)
+        {
+            EnableRainbow(); // temiz çıkış → gökkuşağı (bounce bunu çağırmaz, beyaz kalır)
+            StartCoroutine(FlyRoutine(speed, onDone));
+        }
+
+        /// <summary>Strip+ok başını gökkuşağı materyaline çevirir (shader varsa). Yalnız Fly'da çağrılır.</summary>
+        private void EnableRainbow()
+        {
+            var rb = RainbowMat;
+            if (rb == null) return; // shader yok → beyaz kalır
+            _rainbow = true;
+            _stripMR.sharedMaterial = rb;
+            _headMR.sharedMaterial = rb;
+            SetOffset(0f); // UV'leri hemen yaz
+        }
 
         private IEnumerator FlyRoutine(float speed, Action onDone)
         {
@@ -133,6 +196,33 @@ namespace ArrowRotate.View
             var dir = DirAt(baseL);
             _head.localPosition = new Vector3(basePos.x, 0f, basePos.y);
             _head.localRotation = Quaternion.Euler(0f, -Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg, 0f);
+
+            if (_rainbow)
+            {
+                // referans: uçan kuyruğun dünya konumu — UV.x buna GÖRE (okla taşınır, strobe olmaz).
+                // Kaydırmayı shader _Time ile yapar; burada yalnız ok'a göreli UV yazılır.
+                var tp = PointAt(tailL);
+                var refW = transform.TransformPoint(new Vector3(tp.x, 0f, tp.y));
+                if (_stripMF.gameObject.activeSelf && _stripMF.sharedMesh != null)
+                    WriteRainbowUV(_stripMF.sharedMesh, _stripMF.transform, refW);
+                if (_headMF.sharedMesh != null)
+                    WriteRainbowUV(_headMF.sharedMesh, _head, refW);
+            }
+        }
+
+        /// <summary>Mesh UV.x'ini OK'A GÖRELİ (refW=kuyruğa uzaklık × ölçek) yazar; UV.y=0.5 (tek satır gradient).
+        /// Strip ve ok başı AYNI refW → gradient kesintisiz, okla taşınır. Shader UV.x'i _Time ile kaydırır.</summary>
+        private static void WriteRainbowUV(Mesh m, Transform tf, Vector3 refW)
+        {
+            var verts = m.vertices;
+            var uvs = new Vector2[verts.Length];
+            for (int i = 0; i < verts.Length; i++)
+            {
+                var w = tf.TransformPoint(verts[i]);
+                float d = Vector3.Distance(w, refW); // kuyruktan ok boyunca uzaklık
+                uvs[i] = new Vector2(d * RainbowUVScale, 0.5f);
+            }
+            m.uv = uvs;
         }
 
         private Vector2 PointAt(float dist)

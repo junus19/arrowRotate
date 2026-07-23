@@ -22,13 +22,20 @@ namespace ArrowRotate.View
         {
             if (Manager == null || Cam == null) return;
 
-            if (Input.GetMouseButtonDown(0))
-                Tap(Input.mousePosition);
-
-            for (int i = 0; i < Input.touchCount; i++)
+            // ⚠ Cihazda dokunuş, mouse tıklamasını da SİMÜLE eder (Input.simulateMouseWithTouches
+            // varsayılan açık). İki dal birden okunursa tek dokunuş 2× Tap → 120° dönüş (build'de yaşandı,
+            // editörde touch olmadığı için görünmez). Bu yüzden touch VARSA mouse dalı ATLANIR.
+            if (Input.touchCount > 0)
             {
-                var t = Input.GetTouch(i);
-                if (t.phase == TouchPhase.Began) Tap(t.position);
+                for (int i = 0; i < Input.touchCount; i++)
+                {
+                    var t = Input.GetTouch(i);
+                    if (t.phase == TouchPhase.Began) Tap(t.position);
+                }
+            }
+            else if (Input.GetMouseButtonDown(0))
+            {
+                Tap(Input.mousePosition);
             }
         }
 
