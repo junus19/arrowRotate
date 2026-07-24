@@ -185,6 +185,8 @@ MonoBehaviour:
   ArrowMaterial3D: {fileID: 0}
   TrailSprites:
   - {fileID: 21300000, guid: 27fda25c9de74466599486eea9ecb71c, type: 3}
+  LockSprite: {fileID: 21300000, guid: dbc655935fab4453b815096f02c98f45, type: 3}
+  KeySprite: {fileID: 21300000, guid: 2d21267ab70e243baabdec512129830c, type: 3}
   TileGap: 0
   TileThicknessY: 1.5
   SegmentSink: 0.12

@@ -36,6 +36,7 @@ namespace ArrowRotate.Game
         public event Action<int> ArrowConnected; // arrowId
         public event Action<int> RotatePerformed;// arrowId — yalnızca gerçekleşen döndürmeler
         public event Action<int> IceBroken;      // arrowId
+        public event Action<int> LockOpened;     // group id (anahtar çıktı, kilit açıldı)
         public bool InputLocked { get; set; }
 
         public int MoveCount { get; private set; }
@@ -130,6 +131,12 @@ namespace ArrowRotate.Game
                 return;
             }
 
+            if (arrow.IsLocked)
+            {
+                Board.ShakeLock(arrow.LockGroup); // kilitli: anahtar çıkana dek kilitli, hamle SAYILMAZ
+                return;
+            }
+
             if (!_timerStarted) { _timerStarted = true; _timerStart = Time.time; }
             MoveCount++;
 
@@ -219,6 +226,11 @@ namespace ArrowRotate.Game
             // (detach) — çünkü altındaki katman terfi edince AYNI (q,r) anahtarına yeni görsel bağlanır.
             // Terfi VERİDE anında (yeni yüzey hemen engel/tap olur), GÖRSELDE taş kaybolurken yükselir.
             float perCell = HexMetrics.Sqrt3 * s / FlightSpeed;
+
+            // anahtar mekaniği: uçuş yolunda anahtar hexagonu varsa ok üstünden geçince tetikle (obstacle DEĞİL)
+            if (_pendingExit.TryGetValue(arrow.ArrowId, out var exitInfo) && exitInfo.HeadCell != null)
+                TriggerKeysOnPath(exitInfo.HeadCell.Q, exitInfo.HeadCell.R, exitInfo.ExitDir, perCell, RayScanner.MaxSteps);
+
             var dying = new List<GameObject>(cellKeys.Count * 2);
             for (int i = 0; i < cellKeys.Count; i++)
             {
@@ -240,6 +252,31 @@ namespace ArrowRotate.Game
                     .Fly(FlightSpeed, () => OnFlightDone(arrow, dying));
         }
 
+        // ── anahtar mekaniği ────────────────────────────────────────────────────
+        /// <summary>Head'den exitDir boyunca ışında anahtar hexagonu ararsa tetikler (ok o hücreye ulaşınca).</summary>
+        private void TriggerKeysOnPath(int q, int r, int exitDir, float perCell, int maxK)
+        {
+            if (_level.Keys.Count == 0) return;
+            var (dq, dr) = HexCoord.Dirs[exitDir];
+            for (int k = 1; k <= maxK; k++)
+            {
+                q += dq; r += dr;
+                var key = _level.KeyAt(q, r);
+                if (key == null) continue;
+                key.Triggered = true; // aynı uçuşta tekrar tetiklenmesin
+                StartCoroutine(TriggerKeyDelayed(key, VanishStartDelay + (k - 1) * perCell));
+            }
+        }
+
+        private IEnumerator TriggerKeyDelayed(KeyCell key, float delay)
+        {
+            if (delay > 0f) yield return new WaitForSeconds(delay);
+            foreach (var a in _level.Arrows)
+                if (a.LockGroup == key.Group) a.Unlocked = true; // kilitli oklar aktifleşir
+            Board.TriggerKey(key.Q, key.R, key.Group); // anahtar hexagonu: bounce anim → kilide uç → aç
+            LockOpened?.Invoke(key.Group);
+        }
+
         private void OnFlightDone(Arrow arrow, List<GameObject> dying)
         {
             arrow.State = ArrowState.Done;
@@ -259,6 +296,7 @@ namespace ArrowRotate.Game
                     IceBroken?.Invoke(a.ArrowId);
                 }
             }
+
 
             bool allExited = true;
             foreach (var a in _level.Arrows) if (!a.Exited) { allExited = false; break; }

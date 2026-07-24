@@ -18,6 +18,13 @@ namespace ArrowRotate.EditorTools
         // Nested önizleme ölçeği — runtime BoardView.NestScale varsayılanıyla eşleşmeli (katman başına çarpan).
         private const float NestPreviewScale = 0.5f;
 
+        // Kilit/anahtar ikon texture'ları (canvas önizleme) — tembel yükle
+        private Texture2D _lockTex, _keyTex;
+        private Texture2D LockTex => _lockTex != null ? _lockTex
+            : (_lockTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Arrow Rotate/Sprites/Lock_1.Png"));
+        private Texture2D KeyTex => _keyTex != null ? _keyTex
+            : (_keyTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Arrow Rotate/Sprites/Key_1.Png"));
+
         private void DrawCanvasPanel()
         {
             var canvas = GUILayoutUtility.GetRect(100, 100000, 100, 100000,
@@ -112,6 +119,9 @@ namespace ArrowRotate.EditorTools
                 }
             }
 
+            // ── Anahtar mekaniği önizlemesi (kilitli hücre kapağı + Lock/Key ikonları) ──
+            DrawLockKeyOverlay(s, origin);
+
             // ── Draw yolu önizlemesi ─────────────────────────────────────────
             if (_drawing && _drawPath.Count > 0)
             {
@@ -144,6 +154,51 @@ namespace ArrowRotate.EditorTools
             // ── Edit seçim vurgusu ───────────────────────────────────────────
             if (_tool == Tool.Edit && _editCell.q != int.MinValue)
                 DrawHexOutline(CenterGui(_editCell.q, _editCell.r, s, origin), s * 0.94f, Color.white, 2.5f);
+        }
+
+        /// <summary>Kilitli hücreleri koyu kapakla örter + grup başına Lock ikonu (centroid) + anahtar okuna Key ikonu.</summary>
+        private void DrawLockKeyOverlay(float s, Vector2 origin)
+        {
+            if (_selected.Arrows == null || _selected.Cells == null) return;
+
+            var groupSum = new Dictionary<int, Vector2>();
+            var groupCount = new Dictionary<int, int>();
+            foreach (var cell in _selected.Cells)
+            {
+                if (cell.Layer != 0 || cell.ArrowId < 0 || cell.ArrowId >= _selected.Arrows.Length) continue;
+                var arr = _selected.Arrows[cell.ArrowId];
+                if (arr.LockGroup < 0) continue;
+                var c = CenterGui(cell.Q, cell.R, s, origin);
+                DrawHexFilled(c, s * 0.91f, new Color(0.15f, 0.16f, 0.20f, 0.72f)); // koyu kapak (üstü kapalı)
+                if (!groupSum.ContainsKey(arr.LockGroup)) { groupSum[arr.LockGroup] = Vector2.zero; groupCount[arr.LockGroup] = 0; }
+                groupSum[arr.LockGroup] += c; groupCount[arr.LockGroup]++;
+            }
+
+            // grup başına tek Lock ikonu (centroid) — grup renginde (açık ton)
+            var lockLabel = new GUIStyle(EditorStyles.boldLabel) { alignment = TextAnchor.MiddleCenter, normal = { textColor = Color.white } };
+            var prevColor = GUI.color;
+            foreach (var kv in groupSum)
+            {
+                Vector2 ctr = kv.Value / groupCount[kv.Key];
+                float sz = s * 0.7f;
+                GUI.color = ArrowRotate.View.LockKeyFx.GroupColor(kv.Key);
+                if (LockTex != null) GUI.DrawTexture(new Rect(ctr.x - sz * 0.5f, ctr.y - sz * 0.5f, sz, sz), LockTex, ScaleMode.ScaleToFit);
+                GUI.color = prevColor;
+                GUI.Label(new Rect(ctr.x - 10, ctr.y + sz * 0.35f, 20, 14), kv.Key.ToString(), lockLabel);
+            }
+
+            // anahtar hexagonları (_selected.Keys): koyu hex + grup renginde Key ikonu
+            if (_selected.Keys != null)
+                foreach (var key in _selected.Keys)
+                {
+                    var c = CenterGui(key.Q, key.R, s, origin);
+                    DrawHexFilled(c, s * 0.91f, new Color(0.13f, 0.14f, 0.18f, 0.85f)); // KOYU anahtar hexagonu
+                    float sz = s * 0.62f;
+                    GUI.color = ArrowRotate.View.LockKeyFx.GroupColor(key.Group);
+                    if (KeyTex != null) GUI.DrawTexture(new Rect(c.x - sz * 0.5f, c.y - sz * 0.5f, sz, sz), KeyTex, ScaleMode.ScaleToFit);
+                    GUI.color = prevColor;
+                    GUI.Label(new Rect(c.x - 10, c.y + sz * 0.35f, 20, 14), key.Group.ToString(), lockLabel);
+                }
         }
 
         // ── Geometri ──────────────────────────────────────────────────────────

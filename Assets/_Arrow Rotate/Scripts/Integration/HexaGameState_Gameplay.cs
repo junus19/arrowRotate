@@ -52,11 +52,20 @@ namespace ArrowRotate.Integration
             }
 
             var level = data.ToHexaLevel();
+            // Gömülü stil (İç içe / Alt alta) level'dan okunur → Board.Build buna göre çizer (Begin'den ÖNCE)
+            _gameplayManager.Board.BuriedStyle = data.StackedLayers
+                ? ArrowRotate.View.BuriedVisualStyle.StackedBelow
+                : ArrowRotate.View.BuriedVisualStyle.Nested;
             _gameplayManager.Begin(level);
 
             var gameplayCam = CameraManager.Instance.GameplayCamera;
             _gameplayManager.Board.FitCamera(gameplayCam);
             if (_tapController != null) _tapController.Cam = gameplayCam;
+
+            // Pinch-zoom + pan (büyük level'larda tıklamayı kolaylaştırır) — manager GO'suna iliştir, kadrajı fit'ten okur
+            var panZoom = _gameplayManager.GetComponent<CameraPanZoom>();
+            if (panZoom == null) panZoom = _gameplayManager.gameObject.AddComponent<CameraPanZoom>();
+            panZoom.Init(gameplayCam, _gameplayManager.Board);
 
             SubscribeGameplay();
 

@@ -16,8 +16,10 @@ namespace ArrowRotate.Integration
     public class HexaLevelData : LevelData
     {
         [HideInInspector] public int Radius = 5;
+        [HideInInspector] public bool StackedLayers; // true = gömülüler ALT ALTA (Stacked), false = İÇ İÇE (Nested, varsayılan)
         [HideInInspector] public HexaCellSave[] Cells = System.Array.Empty<HexaCellSave>();
         [HideInInspector] public HexaArrowSave[] Arrows = System.Array.Empty<HexaArrowSave>();
+        [HideInInspector] public HexaKeySave[] Keys = System.Array.Empty<HexaKeySave>(); // anahtar hexagonları
 
         public bool HasCells => Cells != null && Cells.Length > 0;
 
@@ -32,9 +34,14 @@ namespace ArrowRotate.Integration
                 {
                     ArrowId = i,
                     Palette = Arrows[i].Palette,
-                    FreezeAt = Arrows[i].FreezeAt
+                    FreezeAt = Arrows[i].FreezeAt,
+                    LockGroup = Arrows[i].LockGroup
                 });
             }
+
+            if (Keys != null)
+                foreach (var k in Keys)
+                    level.Keys.Add(new KeyCell { Q = k.Q, R = k.R, Group = k.Group });
 
             foreach (var s in Cells) // ok sırası + kuyruk→head sıralı
             {
@@ -49,12 +56,13 @@ namespace ArrowRotate.Integration
         public void FromHexaLevel(HexaLevel level, int radius)
         {
             Radius = radius;
+            // NOT: StackedLayers editör tarafından ayrıca ayarlanır (üretim stili bilgisi levelde değil).
             Arrows = new HexaArrowSave[level.Arrows.Count];
             var cells = new List<HexaCellSave>();
 
             foreach (var arrow in level.Arrows)
             {
-                Arrows[arrow.ArrowId] = new HexaArrowSave { Palette = arrow.Palette, FreezeAt = arrow.FreezeAt };
+                Arrows[arrow.ArrowId] = new HexaArrowSave { Palette = arrow.Palette, FreezeAt = arrow.FreezeAt, LockGroup = arrow.LockGroup };
                 foreach (var pos in arrow.Cells)
                 {
                     var c = level.GetArrowCell(arrow.ArrowId, pos); // yüzey ya da gömülü — okun kendi hücresi
@@ -62,6 +70,10 @@ namespace ArrowRotate.Integration
                 }
             }
             Cells = cells.ToArray();
+
+            Keys = new HexaKeySave[level.Keys.Count];
+            for (int i = 0; i < level.Keys.Count; i++)
+                Keys[i] = new HexaKeySave { Q = level.Keys[i].Q, R = level.Keys[i].R, Group = level.Keys[i].Group };
         }
     }
 
@@ -83,5 +95,14 @@ namespace ArrowRotate.Integration
     {
         public int Palette;  // görsel renk (arrowId DEĞİL)
         public int FreezeAt; // 0 = buzsuz, 1..3 = eşik
+        public int LockGroup = -1; // >=0 = kilitli ok (üstü kapalı), grup id
+    }
+
+    [System.Serializable]
+    public class HexaKeySave
+    {
+        public int Q;
+        public int R;
+        public int Group; // eşleşen kilit grubu (anahtar & kilit aynı renk)
     }
 }

@@ -23,6 +23,18 @@ namespace ArrowRotate.Core
 
         public readonly List<Arrow> Arrows = new List<Arrow>();
 
+        /// <summary>Anahtar hexagonları: bağımsız hücreler (ok DEĞİL). Bir ok uçuş yolunda üstünden geçince
+        /// (çarpınca) tetiklenir, aynı gruptaki kilitli okları açar. Obstacle DEĞİL (ok üstünden uçar).</summary>
+        public readonly List<KeyCell> Keys = new List<KeyCell>();
+
+        /// <summary>(q,r)'de henüz tetiklenmemiş anahtar (yoksa null).</summary>
+        public KeyCell KeyAt(int q, int r)
+        {
+            for (int i = 0; i < Keys.Count; i++)
+                if (!Keys[i].Triggered && Keys[i].Q == q && Keys[i].R == r) return Keys[i];
+            return null;
+        }
+
         /// <summary>Çözüm halindeki engelleme grafiği: BlockedBy[a] = a'nın ışını üstünde segmenti olan ok kimlikleri.</summary>
         public List<HashSet<int>> BlockedBy = new List<HashSet<int>>();
 
@@ -91,5 +103,14 @@ namespace ArrowRotate.Core
                 return n;
             }
         }
+    }
+
+    /// <summary>Anahtar hexagonu — bağımsız tetikleyici hücre (ok değil). Bir ok üstünden geçince Group kilidini açar.</summary>
+    public sealed class KeyCell
+    {
+        public int Q;
+        public int R;
+        public int Group;      // eşleşen LockGroup
+        public bool Triggered; // runtime: ok çarptı, kilide uçtu
     }
 }

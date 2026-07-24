@@ -252,6 +252,9 @@ namespace ArrowRotate.View
 
         public void SetVisible(bool visible) => _rotRoot.gameObject.SetActive(visible);
 
+        /// <summary>Tapte Y ekseninde dönen kök — anahtar ikonu gibi ok'la BİRLİKTE dönmesi gereken şeyler buraya parent'lanır.</summary>
+        public Transform RotRoot => _rotRoot;
+
         private IEnumerator RotateRoutine()
         {
             float from = _currentAngle;

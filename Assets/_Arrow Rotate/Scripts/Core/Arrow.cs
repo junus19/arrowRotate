@@ -17,6 +17,8 @@ namespace ArrowRotate.Core
         public int ExitDir;          // çözüm halindeki (rot=0) uçuş yönü
         public int FreezeAt;         // 0 = buzsuz, 1..3 = gereken toplam çıkış eşiği
         public bool Unfrozen;
+        public int LockGroup = -1;   // >=0 = bu ok KİLİTLİ (üstü kapalı), bu grup id'sine ait; grubun anahtar hexagonu tetiklenince açılır
+        public bool Unlocked;        // runtime: anahtar tetiklendi, kilit açıldı
         public ArrowState State = ArrowState.Idle;
         public bool Exited;
         /// <summary>Bekleyen ok en son hangi engel oka çarpıp döndü (arrowId; -1 = henüz çarpmadı).
@@ -27,5 +29,6 @@ namespace ArrowRotate.Core
         public (int q, int r) TailPos => Cells[0];
         public (int q, int r) HeadPos => Cells[Cells.Count - 1];
         public bool IsFrozen(int exitedCount) => FreezeAt > 0 && !Unfrozen && exitedCount < FreezeAt;
+        public bool IsLocked => LockGroup >= 0 && !Unlocked;
     }
 }

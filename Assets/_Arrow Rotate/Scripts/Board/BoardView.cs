@@ -42,6 +42,10 @@ namespace ArrowRotate.View
         public Material ArrowMaterial3D;
         [Tooltip("Uçuş particle izi sprite'ları — ok çıkarken arkadan random spawn edilir (Circle/Star/Square). Boşsa kod-içi daire.")]
         public Sprite[] TrailSprites;
+        [Tooltip("Anahtar mekaniği: kilitli grup ikonu (Lock_1).")]
+        public Sprite LockSprite;
+        [Tooltip("Anahtar mekaniği: anahtar taşıyan okun ikonu (Key_1).")]
+        public Sprite KeySprite;
         [Tooltip("Taşlar arası BOŞLUK (S oranı). BÜYÜK değer = büyük boşluk. Footprint = 1 − TileGap. Hücre aralığı sabit (segment bağlantıları etkilenmez); taşları küçültüp aralarında görsel gap açar (örtüşme/z-fight'ı önler). 0 = mesh'in doğal boşluğu, 0.1 belirgin boşluk.")]
         [Range(0f, 0.6f)] public float TileGap = 0f;
         [Tooltip("Taş kalınlık (Y) çarpanı — puck yüksekliği. Mesh merkez pivotlu, hem üste hem alta büyür. 1 = mesh'in doğal kalınlığı, 1.5 = %50 kalın.")]
@@ -83,6 +87,8 @@ namespace ArrowRotate.View
         private readonly Dictionary<(int q, int r), List<(TileView tile, SegmentView seg, int layer)>> _buriedViews
             = new Dictionary<(int, int), List<(TileView, SegmentView, int)>>();
         private readonly Dictionary<int, IceView> _ices = new Dictionary<int, IceView>();
+        private readonly Dictionary<int, LockGroupView> _lockGroups = new Dictionary<int, LockGroupView>();          // group id → kilit görseli
+        private readonly Dictionary<(int q, int r), KeyCellView> _keyCellViews = new Dictionary<(int, int), KeyCellView>(); // anahtar hexagonları
         private HexaLevel _level;
 
         // Katman koyulaştırma çarpanı (index = Layer). Kullanıcı kararı (2026-07-22): alt katmanlar GERÇEK
@@ -123,6 +129,9 @@ namespace ArrowRotate.View
             var segMat = db.SegmentMaterial != null ? db.SegmentMaterial
                        : (ArrowMaterial3D != null ? ArrowMaterial3D : MeshFactory.Lit3DTransparent);
 
+            // anahtar mekaniği toplama (yalnız XZ): kilitli hücreler (grup → [segment, kapak merkezi])
+            var lockCells = new Dictionary<int, List<(SegmentView seg, Vector3 capCenter)>>();
+
             foreach (var arrow in level.Arrows)
             {
                 var color = HexaPalette.ForPalette(arrow.Palette);
@@ -143,6 +152,12 @@ namespace ArrowRotate.View
                             if (CastShadows3D) { tv.SetCastShadows(true); sv.SetCastShadows(true); }
                             _tiles[pos] = tv;
                             _segments[pos] = sv;
+                            if (arrow.LockGroup >= 0) // kilitli: üstü kapatılacak (segment gizli), grubu topla
+                            {
+                                if (!lockCells.TryGetValue(arrow.LockGroup, out var lc))
+                                    lockCells[arrow.LockGroup] = lc = new List<(SegmentView, Vector3)>();
+                                lc.Add((sv, new Vector3(x, TileTopY + 0.02f * CellSize, y)));
+                            }
                         }
                         else
                         {
@@ -191,6 +206,21 @@ namespace ArrowRotate.View
 
                 if (arrow.FreezeAt > 0 && !xz) // buz: XZ'de sonra ele alınacak
                     _ices[arrow.ArrowId] = IceView.Create(transform, level, arrow, CellSize);
+            }
+
+            // ── anahtar mekaniği görselleri (yalnız XZ) ── kilit & anahtar aynı GRUP RENGİNDE (açık ton)
+            if (xz)
+            {
+                float iconY = TileTopY + 0.35f * CellSize;      // ikonlar yüzeyin biraz üstünde yüzsün
+                float capRadius = Mathf.Clamp(1f - TileGap, 0.2f, 2f) * CellSize * 0.92f;
+                foreach (var kv in lockCells)
+                    _lockGroups[kv.Key] = LockGroupView.Create(transform, kv.Key, kv.Value, LockSprite, capRadius, iconY, CellSize, LockKeyFx.GroupColor(kv.Key));
+                foreach (var key in level.Keys) // bağımsız anahtar hexagonları (ok değil)
+                {
+                    var (kx, ky) = HexMetrics.Center(key.Q, key.R, CellSize);
+                    _keyCellViews[(key.Q, key.R)] = KeyCellView.Create(
+                        transform, key.Group, new Vector3(kx, 0f, ky), KeySprite, capRadius, TileTopY, iconY, CellSize, LockKeyFx.GroupColor(key.Group));
+                }
             }
         }
 
@@ -270,6 +300,8 @@ namespace ArrowRotate.View
             _segments.Clear();
             _buriedViews.Clear();
             _ices.Clear();
+            _lockGroups.Clear();
+            _keyCellViews.Clear();
         }
 
         // ── katman terfisi (görsel) ─────────────────────────────────────────────
@@ -423,6 +455,33 @@ namespace ArrowRotate.View
             }
         }
 
+        // ── anahtar mekaniği ────────────────────────────────────────────────────
+        /// <summary>Kilitli okun taşına dokunuş geri bildirimi (kilit ikonu titrer). Hamle sayılmaz.</summary>
+        public void ShakeLock(int group)
+        {
+            if (_lockGroups.TryGetValue(group, out var lg) && lg != null) lg.Shake();
+        }
+
+        /// <summary>Ok anahtar hexagonuna çarptı: hexagon bounce animasyonu oynar, anahtar ikonu kilide uçar, kilit açılır.</summary>
+        public void TriggerKey(int q, int r, int group)
+        {
+            _lockGroups.TryGetValue(group, out var lg);
+            Vector3 lockPos = lg != null ? lg.LockPos : Vector3.zero;
+            if (_keyCellViews.TryGetValue((q, r), out var kv) && kv != null)
+            {
+                _keyCellViews.Remove((q, r));
+                kv.TriggerToLock(lockPos, () => OpenLock(group)); // anim → uç → sonra kilidi aç
+            }
+            else OpenLock(group);
+        }
+
+        /// <summary>Kilit grubunu görsel olarak açar (lid'ler kalkar, oklar belirir).</summary>
+        public void OpenLock(int group)
+        {
+            if (_lockGroups.TryGetValue(group, out var lg) && lg != null) lg.Open();
+            _lockGroups.Remove(group);
+        }
+
         public TileView GetTile((int q, int r) pos) => _tiles.TryGetValue(pos, out var t) ? t : null;
         public SegmentView GetSegment((int q, int r) pos) => _segments.TryGetValue(pos, out var sv) ? sv : null;
 
@@ -447,6 +506,16 @@ namespace ArrowRotate.View
         }
 
         /// <summary>Kamerayı tahta bbox'ına oturtur (dikey telefon güvenli alan payıyla).</summary>
+        // ── Kamera pan/zoom kadraj bilgisi (FitCamera doldurur; CameraPanZoom okur) ──
+        /// <summary>FitCamera en az bir kez çalıştı mı (aşağıdaki değerler geçerli mi).</summary>
+        public bool CameraFitReady { get; private set; }
+        /// <summary>Board'un düzlem merkezi (XZ modda y=0; 2D modda z=0).</summary>
+        public Vector3 CameraFocusCenter { get; private set; }
+        /// <summary>Yarı genişlik/derinlik (padding dahil), düzlem koordinatında (x=worldX, y=worldZ [XZ] veya worldY [2D]).</summary>
+        public Vector2 CameraFocusExtents { get; private set; }
+        /// <summary>Fit orthographicSize — maksimum uzaklaşma (pan/zoom bunu üst sınır alır).</summary>
+        public float CameraFitSize { get; private set; }
+
         public void FitCamera(Camera cam, float padding = 1.5f)
         {
             if (_level == null || _level.Cells.Count == 0) return;
@@ -485,6 +554,10 @@ namespace ArrowRotate.View
                 // eğik bakışta derinlik ekseni cos(tilt) ile kısalır; dikey kaplama buna göre
                 float xzHalfV = Mathf.Max(xzHalfDepth * Mathf.Cos(tilt * Mathf.Deg2Rad) + 0.5f, xzHalfW / cam.aspect);
                 cam.orthographicSize = xzHalfV;
+                CameraFocusCenter = boardCenterXZ;
+                CameraFocusExtents = new Vector2(xzHalfW, xzHalfDepth);
+                CameraFitSize = xzHalfV;
+                CameraFitReady = true;
                 return;
             }
 
@@ -519,6 +592,10 @@ namespace ArrowRotate.View
             float halfH = (maxY - minY) * 0.5f + padding;
             float halfW = (maxX - minX) * 0.5f + padding;
             cam.orthographicSize = Mathf.Max(halfH, halfW / cam.aspect);
+            CameraFocusCenter = boardCenter;
+            CameraFocusExtents = new Vector2(halfW, halfH);
+            CameraFitSize = cam.orthographicSize;
+            CameraFitReady = true;
         }
     }
 }

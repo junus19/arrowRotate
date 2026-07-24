@@ -36,6 +36,11 @@ namespace ArrowRotate.Game
 
             Manager.LevelWon += () => Debug.Log("[Sandbox] WIN callback alındı");
             BuildLevel();
+
+            // Pinch-zoom + pan (test için de) — kadrajı BuildLevel'daki FitCamera'dan okur
+            var panZoom = GetComponent<CameraPanZoom>();
+            if (panZoom == null) panZoom = gameObject.AddComponent<CameraPanZoom>();
+            panZoom.Init(Camera.main, Board);
         }
 
         [ContextMenu("Regenerate")]

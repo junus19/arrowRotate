@@ -5,12 +5,27 @@ namespace ArrowRotate.View
 {
     /// <summary>
     /// Raycast'siz tap girişi: ekran → dünya → axial dönüşüm (SKILL.md §11).
-    /// Debounce yok — arka arkaya hızlı dokunuşlar manager'da birikerek döner.
+    /// TAP = kısa, EŞİK'ten (CameraPanZoom.DragThresholdPx) az kayan, tek-parmak dokunuş; SERBEST BIRAKIŞTA sayılır.
+    /// Böylece pan (sürükleme) ve pinch (2 parmak) yanlışlıkla dönüş tetiklemez. CameraPanZoom ile AYNI eşiği
+    /// kullanır → koordinasyona gerek yok: kayış > eşik ise burada tap yok, orada pan var.
     /// </summary>
     public class TapController : MonoBehaviour
     {
         public Camera Cam;
         public HexaGameplayManager Manager;
+
+        private const float MaxTapTime = 0.4f; // bundan uzun basış tap değil (uzun basış/gezinme)
+        private float Thr2 => CameraPanZoom.DragThresholdPx * CameraPanZoom.DragThresholdPx;
+
+        // dokunuş tap adayı
+        private Vector2 _touchStart;
+        private float _touchStartTime;
+        private bool _touchValid;
+        private bool _multiSeen; // gesture boyunca 2+ parmak görüldüyse tap iptal
+        // fare (editör)
+        private Vector2 _mouseStart;
+        private float _mouseStartTime;
+        private bool _mouseDown;
 
         private void Awake()
         {
@@ -22,20 +37,42 @@ namespace ArrowRotate.View
         {
             if (Manager == null || Cam == null) return;
 
-            // ⚠ Cihazda dokunuş, mouse tıklamasını da SİMÜLE eder (Input.simulateMouseWithTouches
-            // varsayılan açık). İki dal birden okunursa tek dokunuş 2× Tap → 120° dönüş (build'de yaşandı,
-            // editörde touch olmadığı için görünmez). Bu yüzden touch VARSA mouse dalı ATLANIR.
-            if (Input.touchCount > 0)
+            int tc = Input.touchCount;
+            if (tc > 0)
             {
-                for (int i = 0; i < Input.touchCount; i++)
+                if (tc >= 2) _multiSeen = true;
+                var t = Input.GetTouch(0);
+                switch (t.phase)
                 {
-                    var t = Input.GetTouch(i);
-                    if (t.phase == TouchPhase.Began) Tap(t.position);
+                    case TouchPhase.Began:
+                        if (tc == 1) { _touchValid = true; _multiSeen = false; _touchStart = t.position; _touchStartTime = Time.unscaledTime; }
+                        break;
+                    case TouchPhase.Moved:
+                    case TouchPhase.Stationary:
+                        if (_touchValid && (t.position - _touchStart).sqrMagnitude > Thr2) _touchValid = false;
+                        break;
+                    case TouchPhase.Ended:
+                    case TouchPhase.Canceled:
+                        if (_touchValid && !_multiSeen && tc == 1
+                            && (t.position - _touchStart).sqrMagnitude <= Thr2
+                            && (Time.unscaledTime - _touchStartTime) < MaxTapTime)
+                            Tap(t.position);
+                        _touchValid = false;
+                        break;
                 }
             }
-            else if (Input.GetMouseButtonDown(0))
+            else
             {
-                Tap(Input.mousePosition);
+                _multiSeen = false;
+                // fare (editörde touch yok): basıp-bırak, eşikten az kaydıysa tap
+                if (Input.GetMouseButtonDown(0)) { _mouseDown = true; _mouseStart = Input.mousePosition; _mouseStartTime = Time.unscaledTime; }
+                else if (Input.GetMouseButtonUp(0) && _mouseDown)
+                {
+                    _mouseDown = false;
+                    if (((Vector2)Input.mousePosition - _mouseStart).sqrMagnitude <= Thr2
+                        && (Time.unscaledTime - _mouseStartTime) < MaxTapTime)
+                        Tap(Input.mousePosition);
+                }
             }
         }
 

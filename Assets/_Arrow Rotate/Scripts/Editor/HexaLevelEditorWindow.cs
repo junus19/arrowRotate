@@ -66,13 +66,13 @@ namespace ArrowRotate.EditorTools
         private bool _fillFoldout;
         private int _fillDifficulty = 1;
         private int _fillSeed = 1000;
-        private bool _fillCustom;      // true = ok/katman/yayılma slider'ları; false = zorluk preset'i
+        private bool _fillCustom;      // true = ok/katman/nested slider'ları; false = zorluk preset'i
         private int _fillArrows = 5;
         private int _fillLayers = 1;   // 1 = düz
-        private int _fillSpanning = 0; // parçaları farklı katmanda olacak ok sayısı
+        private int _fillNested = 0;   // gömülü ok sayısı (nested = 1 hücre/ok, stacked = yayılan ok)
         private int _fillIce = 0;
-        private int _fillBuriedMin = 1; // yayılan ok başına gömülü parça alt sınırı
-        private int _fillBuriedMax = 2; // ... üst sınırı
+        private int _fillLocked = 0;   // KİLİTLİ ok sayısı (tek grup, anahtar hexagonu ilk okun önüne) — düz levelda
+        private int _fillBuriedStyle = 0; // 0 = İç içe (Nested), 1 = Alt alta (Stacked)
 
         // ── Stil sabitleri ────────────────────────────────────────────────────
         private static readonly Color CanvasBg = new Color(0.10f, 0.10f, 0.14f);
