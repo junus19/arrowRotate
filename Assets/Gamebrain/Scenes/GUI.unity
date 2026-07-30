@@ -449,6 +449,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b183cc7e12c4e17b14fce78c8fc72f8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameBrain.TowerDefense.LevelFailPanel
+--- !u!114 &1757718999 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 481520090364466863, guid: 90603d00bfa3e4eac8b1295e75c5e5c2, type: 3}
+  m_PrefabInstance: {fileID: 4167652996758769732}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff84fef791198408684ad18530fb240b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.Casual.ShopPanel
 --- !u!114 &1902941063 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 3678736731672506876, guid: e6d2be2a4a3fc4ee4bfa23d5de57f87c, type: 3}
@@ -3156,6 +3167,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 5611791366012120752, guid: e6d2be2a4a3fc4ee4bfa23d5de57f87c, type: 3}
+      propertyPath: _panel
+      value: 
+      objectReference: {fileID: 1757718999}
+    - target: {fileID: 5691083050139457008, guid: e6d2be2a4a3fc4ee4bfa23d5de57f87c, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7155464060243706457, guid: e6d2be2a4a3fc4ee4bfa23d5de57f87c, type: 3}
       propertyPath: m_Pivot.x
       value: 0
