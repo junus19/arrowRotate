@@ -329,7 +329,14 @@ namespace ArrowRotate.EditorTools
                 // Yalnız düz levelda (Katman 1) — katmanlı çıkış sırası dinamik, statik grafikle güvenli değil.
                 int lockedMax = Mathf.Max(0, _fillArrows - 1); // en az anahtar için 1 ok açıkta kalmalı
                 using (new EditorGUI.DisabledScope(_fillLayers > 1))
+                {
                     _fillLocked = EditorGUILayout.IntSlider("Kilitli Ok", Mathf.Clamp(_fillLocked, 0, lockedMax), 0, lockedMax);
+                    using (new EditorGUI.DisabledScope(_fillLocked <= 0))
+                    {
+                        int gMax = Mathf.Clamp(Mathf.Min(_fillLocked, _fillArrows - _fillLocked), 1, 4); // her gruba 1 anahtar + 1 kilitli
+                        _fillLockGroups = EditorGUILayout.IntSlider("Kilit Grubu", Mathf.Clamp(_fillLockGroups, 1, gMax), 1, gMax);
+                    }
+                }
                 if (_fillLayers > 1) _fillLocked = 0; // katmanlı + kilit henüz desteklenmiyor
             }
             else
@@ -347,9 +354,9 @@ namespace ArrowRotate.EditorTools
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.HelpBox(_fillCustom
-                ? "Nested Sayısı = kaç küçük iç hexagon (gömülü hücre). Kilitli Ok = kaç ok kilitli olacak (tek grup; " +
-                  "anahtar = ilk çıkabilen ok, kilitliler = en geç çıkanlar → çözülebilir kalır; düz level). " +
-                  "Katman≥2 nested için; hedeflenen sayılar üretim tutmazsa yaklaşır."
+                ? "Nested Sayısı = kaç gömülü hücre. Kilitli Ok = kaç ok kilitli olacak; Kilit Grubu = kaç ayrı kilit/anahtar " +
+                  "çifti (her grup kendi renginde). Anahtarlar ilk çıkan oklara, kilitliler en geç çıkanlara verilir → çözülebilir kalır. " +
+                  "BUZLU oklar kilit/anahtar olmaz. Anahtar hexagonu board dışına 3 (olmazsa 4/5) adım boşlukla konur. Düz level (Katman 1)."
                 : "Seçili level'ın İÇERİĞİNİ prosedürel üretimle DEĞİŞTİRİR (scramble + buz dahil). Seed tekrarı aynı level'ı verir.",
                 MessageType.None);
 
@@ -366,7 +373,7 @@ namespace ArrowRotate.EditorTools
                     {
                         var level = LevelGenerator.Generate(_fillSeed, cfg);
                         if (_fillCustom && _fillLocked > 0 && _fillLayers <= 1)
-                            AssignLockKey(level, _fillLocked, cfg.Radius);
+                            AssignLockKey(level, _fillLocked, _fillLockGroups, cfg.Radius);
                         Record("Random Fill");
                         _selected.FromHexaLevel(level, cfg.Radius);
                         _selected.StackedLayers = _fillCustom && _fillLayers > 1 && _fillBuriedStyle == 1; // gömülü stil levelde saklanır
@@ -381,16 +388,21 @@ namespace ArrowRotate.EditorTools
             }
         }
 
-        /// <summary>Düz levelda kilit/anahtar atar: çıkış sırasını BlockedBy'dan üretir (Kahn peel);
-        /// İLK çıkan okun çıkış yolunun önüne ANAHTAR HEXAGONU (grup 0) konur, kilitliler = EN GEÇ çıkan `count` ok.
-        /// İlk ok çıkarken anahtara çarpar → kilit açılır; kalan sıra aynen işler → çözülebilirlik korunur.</summary>
-        private static void AssignLockKey(HexaLevel level, int count, int radius)
+        /// <summary>
+        /// Düz levelda kilit/anahtar atar (çoklu grup destekli). Çıkış sırası `BlockedBy`'dan Kahn-peel ile bulunur:
+        /// **anahtar okları = sıranın BAŞI**, **kilitliler = sıranın SONU** → anahtarlar önce çıkıp kilitleri açar,
+        /// kalan sıra aynen işler ⇒ çözülebilirlik korunur.
+        /// ⚠ BUZLU oklar ne kilitli ne anahtar olur (aynı hexagonda buz+kilit istenmiyor; ayrıca buzlu anahtar
+        /// eşiği dolmadan tıklanamayacağı için kilidi asla açamaz = deadlock).
+        /// Anahtar hexagonu okun çıkış yönünde, bölge dışında, **önce 3 adım boşlukla; olmazsa 4, olmazsa 5**.
+        /// </summary>
+        private static void AssignLockKey(HexaLevel level, int count, int groups, int radius)
         {
             int n = level.Arrows.Count;
             if (n < 2 || level.BlockedBy == null || level.BlockedBy.Count != n) return;
 
             var exited = new bool[n];
-            var order = new System.Collections.Generic.List<int>(n);
+            var order = new List<int>(n);
             bool progress = true;
             while (order.Count < n && progress)
             {
@@ -405,31 +417,86 @@ namespace ArrowRotate.EditorTools
             }
             if (order.Count < n) return; // çözülemez (beklenmez) → kilit ekleme
 
-            // İLK çıkan okun çıkış yolunda bölge-içi boş bir hücreye anahtar hexagonu koy
-            int keyArrow = order[0];
-            var ka = level.Arrows[keyArrow];
-            var head = level.GetArrowCell(keyArrow, ka.HeadPos);
-            var (dq, dr) = HexCoord.Dirs[ka.ExitDir];
-            int kq = head.Q, kr = head.R; bool placed = false;
-            for (int step = 1; step <= 4; step++)
-            {
-                kq += dq; kr += dr;
-                if (HexCoord.InRegion(kq, kr, radius) && level.GetCell(kq, kr) == null)
-                { level.Keys.Add(new KeyCell { Q = kq, R = kr, Group = 0 }); placed = true; break; }
-            }
-            if (!placed) { Debug.LogWarning("[LevelEditor] Anahtar için uygun boş hücre yok — kilit eklenmedi."); return; }
+            groups = Mathf.Clamp(groups, 1, 4);
+            count = Mathf.Clamp(count, 1, n - 1);
 
-            count = Mathf.Clamp(count, 0, n - 1);
-            int locked = 0;
-            for (int i = n - 1; i >= 1 && locked < count; i--) // en geç çıkanlardan kilitle (anahtar okunu kilitleme)
+            // anahtar okları: sıranın başından, BUZSUZ olanlar
+            var keyArrows = new List<int>();
+            for (int i = 0; i < n && keyArrows.Count < groups; i++)
+                if (level.Arrows[order[i]].FreezeAt <= 0) keyArrows.Add(order[i]);
+            if (keyArrows.Count == 0)
+            { Debug.LogWarning("[LevelEditor] Kilit eklenemedi: buzsuz anahtar oku yok."); return; }
+
+            // kilitliler: sıranın SONUNDAN, buzsuz + anahtar değil + TÜM anahtarlardan SONRA çıkan
+            int maxKeyIdx = 0;
+            foreach (int k in keyArrows) maxKeyIdx = Mathf.Max(maxKeyIdx, order.IndexOf(k));
+            var lockedArrows = new List<int>();
+            for (int i = n - 1; i > maxKeyIdx && lockedArrows.Count < count; i--)
             {
                 int id = order[i];
-                if (id == keyArrow) continue;
-                level.Arrows[id].LockGroup = 0;
-                locked++;
+                if (keyArrows.Contains(id)) continue;
+                if (level.Arrows[id].FreezeAt > 0) continue; // buzlu ok kilitlenmez
+                lockedArrows.Add(id);
             }
-            Debug.Log($"[LevelEditor] Kilit: anahtar hexagonu ({kq},{kr}) grup 0, {locked} kilitli ok. Çıkış sırası: {string.Join(",", order)}");
+            if (lockedArrows.Count == 0)
+            { Debug.LogWarning("[LevelEditor] Kilit eklenemedi: uygun (buzsuz, anahtarlardan sonra çıkan) ok yok."); return; }
+
+            // grup sayısı: hem anahtar hem kilitli sayısıyla sınırlı
+            int g = Mathf.Min(groups, Mathf.Min(keyArrows.Count, lockedArrows.Count));
+            keyArrows.RemoveRange(g, keyArrows.Count - g);
+
+            // anahtar hexagonlarını yerleştir (3 → 4 → 5 adım boşluk; dolu/çakışan yeri atla)
+            var used = new HashSet<(int, int)>();
+            var placed = new List<int>();
+            for (int gi = 0; gi < keyArrows.Count; gi++)
+            {
+                if (TryPlaceKey(level, keyArrows[gi], gi, radius, used, out var pos))
+                    placed.Add(gi);
+                else
+                    Debug.LogWarning($"[LevelEditor] Grup {gi}: anahtar hexagonu yerleştirilemedi (3/4/5 adım dolu) — bu grup atlandı.");
+            }
+            if (placed.Count == 0)
+            { Debug.LogWarning("[LevelEditor] Hiçbir anahtar yerleştirilemedi — kilit eklenmedi."); return; }
+
+            // kilitlileri yalnızca YERLEŞEN gruplara dağıt (anahtarsız kilit = çözülemez)
+            for (int i = 0; i < lockedArrows.Count; i++)
+                level.Arrows[lockedArrows[i]].LockGroup = placed[i % placed.Count];
+
+            Debug.Log($"[LevelEditor] Kilit: {placed.Count} grup, {lockedArrows.Count} kilitli ok " +
+                      $"(anahtar okları: {string.Join(",", keyArrows)}). Buzlu oklar hariç tutuldu. Çıkış sırası: {string.Join(",", order)}");
         }
+
+        /// <summary>Anahtar hexagonunu okun çıkış ışınında, bölge DIŞINDA, 3→4→5 adım boşlukla yerleştirmeyi dener.</summary>
+        private static bool TryPlaceKey(HexaLevel level, int arrowId, int group, int radius,
+                                        HashSet<(int, int)> used, out (int q, int r) pos)
+        {
+            pos = default;
+            var arrow = level.Arrows[arrowId];
+            var head = level.GetArrowCell(arrowId, arrow.HeadPos);
+            if (head == null) return false;
+            var (dq, dr) = HexCoord.Dirs[arrow.ExitDir];
+
+            int outStep = -1;
+            for (int step = 1; step <= RayScanner.MaxSteps; step++)
+                if (!HexCoord.InRegion(head.Q + dq * step, head.R + dr * step, radius)) { outStep = step; break; }
+            if (outStep < 0) outStep = radius + 1;
+
+            foreach (int gap in KeyGaps) // önce 3, olmazsa 4, olmazsa 5
+            {
+                int step = outStep + gap;
+                if (step > RayScanner.MaxSteps - 1) continue;
+                int q = head.Q + dq * step, r = head.R + dr * step;
+                if (level.GetCell(q, r) != null) continue;   // dolu (beklenmez, bölge dışı)
+                if (used.Contains((q, r))) continue;          // başka bir anahtar orada
+                used.Add((q, r));
+                level.Keys.Add(new KeyCell { Q = q, R = r, Group = group });
+                pos = (q, r);
+                return true;
+            }
+            return false;
+        }
+
+        private static readonly int[] KeyGaps = { 3, 4, 5 };
 
         /// <summary>Üretilen levelda yayılan ok sayısı + katman başına toplam parça dağılımını konsola yazar.</summary>
         private static void ReportSpanning(HexaLevel level)

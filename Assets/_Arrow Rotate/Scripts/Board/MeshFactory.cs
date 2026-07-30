@@ -41,6 +41,54 @@ namespace ArrowRotate.View
             return mesh;
         }
 
+        private static Mesh _hexPlaneXZ;
+
+        /// <summary>
+        /// XZ düzleminde yatık, yarıçap 1 flat-top hexagon "plane" — **UV + normal + tangent İÇERİR**.
+        /// ⚠ Neden var: projedeki `hexagon_tile_mesh` (EP puck) UV ve tangent TAŞIMIYOR (uv=0, tangents=0;
+        /// runtime'da doğrulandı) → texture/normal-map/smoothness kullanan materyaller (ör. Ice_Mat) o mesh'te
+        /// düzgün görünmez, yalnız saydam görünür. Bu plane Unity'nin Plane/Cube'u gibi tam UV'lidir.
+        /// Ölçek transform'dan verilir (localScale = CellSize·footprint).
+        /// </summary>
+        public static Mesh HexPlaneXZ()
+        {
+            if (_hexPlaneXZ != null) return _hexPlaneXZ;
+            var mesh = new Mesh { name = "HexPlaneXZ" };
+            var verts = new Vector3[7];
+            var uvs = new Vector2[7];
+            var norms = new Vector3[7];
+            var tans = new Vector4[7];
+            verts[0] = Vector3.zero;
+            uvs[0] = new Vector2(0.5f, 0.5f);
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i * 60f * Mathf.Deg2Rad;
+                float x = Mathf.Cos(a), z = Mathf.Sin(a);
+                verts[i + 1] = new Vector3(x, 0f, z);
+                uvs[i + 1] = new Vector2((x + 1f) * 0.5f, (z + 1f) * 0.5f); // -1..1 → 0..1
+            }
+            for (int i = 0; i < 7; i++)
+            {
+                norms[i] = Vector3.up;
+                tans[i] = new Vector4(1f, 0f, 0f, -1f); // tangent +X, bitangent +Z
+            }
+            var tris = new int[18];
+            for (int i = 0; i < 6; i++)
+            {
+                tris[i * 3] = 0;
+                tris[i * 3 + 1] = 1 + (i + 1) % 6;
+                tris[i * 3 + 2] = 1 + i; // +Y'den bakınca ön yüz
+            }
+            mesh.vertices = verts;
+            mesh.uv = uvs;
+            mesh.normals = norms;
+            mesh.tangents = tans;
+            mesh.triangles = tris;
+            mesh.RecalculateBounds();
+            _hexPlaneXZ = mesh;
+            return mesh;
+        }
+
         public static Mesh Circle(float radius, int segments = 20)
         {
             var mesh = new Mesh { name = "Circle" };

@@ -180,6 +180,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ArrowRotate.Game.HexaGameplayManager
   Board: {fileID: 0}
+  FlightSpeedMultiplier: 1.6
 --- !u!114 &269861444
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -195,10 +196,28 @@ MonoBehaviour:
   CellSize: 1
   ViewMode: 0
   TileModel3D: {fileID: 919132149155446097, guid: 40435acbca0cb436f8645fbbb234b4fe, type: 3}
+  HexMesh3D: {fileID: 0}
+  TileMaterial3D: {fileID: 0}
+  ArrowMaterial3D: {fileID: 0}
+  TrailSprites: []
+  IceMaterial3D: {fileID: 0}
+  IceBodyMaterial3D: {fileID: 0}
+  LockSprite: {fileID: 0}
+  KeySprite: {fileID: 0}
+  TileGap: 0
+  TileThicknessY: 1
+  SegmentSink: 0.12
+  SegmentDropY: 0
+  CastShadows3D: 1
+  Theme: {fileID: 0}
   LightPrefab: {fileID: 4763355474144551461, guid: 4a8da6a60015441c08d651a0007ca7ba, type: 3}
+  HelperLightPrefab: {fileID: 0}
   CameraPrefab: {fileID: 2622973730677459900, guid: e9b1f86aec3c74d6fabba9f61361bfcd, type: 3}
   CameraTiltXDeg: -27.4
   CameraBackground: {r: 0.60784316, g: 0.6627451, b: 0.81960785, a: 1}
+  BuriedStyle: 1
+  NestScale: 0.5
+  NestRaise: 0.02
 --- !u!4 &269861445
 Transform:
   m_ObjectHideFlags: 0

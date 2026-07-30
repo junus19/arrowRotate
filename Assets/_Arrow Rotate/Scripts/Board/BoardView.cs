@@ -42,6 +42,10 @@ namespace ArrowRotate.View
         public Material ArrowMaterial3D;
         [Tooltip("Uçuş particle izi sprite'ları — ok çıkarken arkadan random spawn edilir (Circle/Star/Square). Boşsa kod-içi daire.")]
         public Sprite[] TrailSprites;
+        [Tooltip("Buz mekaniği (XZ 3D): üst buz katmanı materyali (Ice_Mat) — UV'li hexagon plane üstünde.")]
+        public Material IceMaterial3D;
+        [Tooltip("Buz mekaniği (XZ 3D): buz GÖVDESİ materyali (Ice_Body) — taşı saran hexagon kütle.")]
+        public Material IceBodyMaterial3D;
         [Tooltip("Anahtar mekaniği: kilitli grup ikonu (Lock_1).")]
         public Sprite LockSprite;
         [Tooltip("Anahtar mekaniği: anahtar taşıyan okun ikonu (Key_1).")]
@@ -86,7 +90,8 @@ namespace ArrowRotate.View
         // Gömülü katman görselleri: (q,r) → Layer ARTAN sırada (index 0 = Layer 1 = sıradaki terfi). Yalnızca XZ.
         private readonly Dictionary<(int q, int r), List<(TileView tile, SegmentView seg, int layer)>> _buriedViews
             = new Dictionary<(int, int), List<(TileView, SegmentView, int)>>();
-        private readonly Dictionary<int, IceView> _ices = new Dictionary<int, IceView>();
+        private readonly Dictionary<int, IceView> _ices = new Dictionary<int, IceView>();       // 2D
+        private readonly Dictionary<int, IceView3D> _ices3D = new Dictionary<int, IceView3D>(); // XZ 3D
         private readonly Dictionary<int, LockGroupView> _lockGroups = new Dictionary<int, LockGroupView>();          // group id → kilit görseli
         private readonly Dictionary<(int q, int r), KeyCellView> _keyCellViews = new Dictionary<(int, int), KeyCellView>(); // anahtar hexagonları
         private HexaLevel _level;
@@ -204,8 +209,11 @@ namespace ArrowRotate.View
                     }
                 }
 
-                if (arrow.FreezeAt > 0 && !xz) // buz: XZ'de sonra ele alınacak
-                    _ices[arrow.ArrowId] = IceView.Create(transform, level, arrow, CellSize);
+                if (arrow.FreezeAt > 0)
+                {
+                    if (!xz) _ices[arrow.ArrowId] = IceView.Create(transform, level, arrow, CellSize);
+                    else if (IceMaterial3D != null) BuildIce3D(level, arrow); // XZ: Ice_Mat'li buz blokları
+                }
             }
 
             // ── anahtar mekaniği görselleri (yalnız XZ) ── kilit & anahtar aynı GRUP RENGİNDE (açık ton)
@@ -215,13 +223,49 @@ namespace ArrowRotate.View
                 float capRadius = Mathf.Clamp(1f - TileGap, 0.2f, 2f) * CellSize * 0.92f;
                 foreach (var kv in lockCells)
                     _lockGroups[kv.Key] = LockGroupView.Create(transform, kv.Key, kv.Value, LockSprite, capRadius, iconY, CellSize, LockKeyFx.GroupColor(kv.Key));
-                foreach (var key in level.Keys) // bağımsız anahtar hexagonları (ok değil)
+                float keyFootprint = Mathf.Clamp(1f - TileGap, 0.2f, 2f);
+                var keyTileColor = new Color(0.20f, 0.21f, 0.26f, 1f); // KOYU anahtar taşı
+                foreach (var key in level.Keys) // bağımsız anahtar hexagonları (ok değil) — gerçek 3D puck taş üstünde
                 {
                     var (kx, ky) = HexMetrics.Center(key.Q, key.R, CellSize);
+                    var keyTile = TileView.Create3DXZ(transform, new Vector3(kx, 0f, ky), CellSize, keyTileColor, HexMesh3D, TileMaterial3D, keyFootprint, TileThicknessY);
+                    if (CastShadows3D) keyTile.SetCastShadows(true);
                     _keyCellViews[(key.Q, key.R)] = KeyCellView.Create(
-                        transform, key.Group, new Vector3(kx, 0f, ky), KeySprite, capRadius, TileTopY, iconY, CellSize, LockKeyFx.GroupColor(key.Group));
+                        transform, key.Group, keyTile.gameObject, new Vector3(kx, iconY, ky), KeySprite, CellSize, LockKeyFx.GroupColor(key.Group));
                 }
             }
+        }
+
+        /// <summary>XZ buz görseli: okun YÜZEY hücrelerini saran buz blokları (Ice_Mat) + kalan-eşik rozeti.</summary>
+        private void BuildIce3D(HexaLevel level, Arrow arrow)
+        {
+            var centers = new List<Vector3>(arrow.Cells.Count);
+            foreach (var pos in arrow.Cells)
+            {
+                var cell = level.GetArrowCell(arrow.ArrowId, pos);
+                if (cell == null || cell.Layer != 0) continue; // gömülü hücre buzla kaplanmaz (üstü zaten kapalı)
+                var (x, y) = HexMetrics.Center(cell.Q, cell.R, CellSize);
+                centers.Add(new Vector3(x, 0f, y));
+            }
+            if (centers.Count == 0) return;
+
+            float tileFoot = Mathf.Clamp(1f - TileGap, 0.2f, 2f);
+
+            // ÜST KATMAN: UV'li HEXAGON PLANE (Ice_Mat — buz dokusu). ⚠ EP puck mesh'i UV/tangent taşımadığı
+            // için Ice_Mat orada düzgün görünmüyordu; bu yüzden plane kullanılıyor.
+            float iceY = SurfaceY + 0.42f * CellSize;   // segment tepesinin biraz üstü
+            var planeScale = new Vector3(CellSize * tileFoot * 1.02f, 1f, CellSize * tileFoot * 1.02f);
+
+            // GÖVDE: taşı saran buz kütlesi (Ice_Body; texture kullanmıyor → EP puck mesh'i UV'siz de olur).
+            // Üstü taş yüzeyinin hemen üstünde biter → ok segmenti gövdenin üstünde görünür kalır.
+            float bodyTopY = TileTopY + 0.05f * CellSize;
+            float bodyYScale = HexMesh3D.bounds.max.y > 1e-4f ? bodyTopY / (HexMesh3D.bounds.max.y * CellSize) : TileThicknessY;
+            var bodyScale = new Vector3(CellSize * tileFoot * 1.05f, CellSize * bodyYScale, CellSize * tileFoot * 1.05f);
+
+            _ices3D[arrow.ArrowId] = IceView3D.Create(transform, arrow.ArrowId, centers, CellSize, arrow.FreezeAt,
+                MeshFactory.HexPlaneXZ(), IceMaterial3D, planeScale, iceY,
+                HexMesh3D, IceBodyMaterial3D, bodyScale, 0f,
+                iceY + 0.30f * CellSize);
         }
 
         /// <summary>
@@ -300,6 +344,7 @@ namespace ArrowRotate.View
             _segments.Clear();
             _buriedViews.Clear();
             _ices.Clear();
+            _ices3D.Clear();
             _lockGroups.Clear();
             _keyCellViews.Clear();
         }
@@ -430,10 +475,11 @@ namespace ArrowRotate.View
             }
         }
 
-        // ── buz (SKILL.md §5) ──────────────────────────────────────────────────
+        // ── buz (SKILL.md §5) — 2D: IceView · XZ 3D: IceView3D (Ice_Mat) ───────
         public void ShakeIce(int arrowId)
         {
             if (_ices.TryGetValue(arrowId, out var ice) && ice != null) ice.Shake();
+            if (_ices3D.TryGetValue(arrowId, out var ice3) && ice3 != null) ice3.Shake();
         }
 
         public void BreakIce(int arrowId)
@@ -443,12 +489,22 @@ namespace ArrowRotate.View
                 ice.Break();
                 _ices.Remove(arrowId);
             }
+            if (_ices3D.TryGetValue(arrowId, out var ice3) && ice3 != null)
+            {
+                ice3.Break();
+                _ices3D.Remove(arrowId);
+            }
         }
 
         public void UpdateIceBadges(int exitedCount)
         {
             if (_level == null) return;
             foreach (var kv in _ices)
+            {
+                var arrow = _level.Arrows[kv.Key];
+                if (kv.Value != null) kv.Value.SetRemaining(arrow.FreezeAt - exitedCount);
+            }
+            foreach (var kv in _ices3D)
             {
                 var arrow = _level.Arrows[kv.Key];
                 if (kv.Value != null) kv.Value.SetRemaining(arrow.FreezeAt - exitedCount);
@@ -524,6 +580,14 @@ namespace ArrowRotate.View
             foreach (var cell in _level.Cells.Values)
             {
                 var (x, y) = HexMetrics.Center(cell.Q, cell.R, CellSize);
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+            foreach (var key in _level.Keys) // uzaktaki anahtar hexagonları da kadraja girsin
+            {
+                var (x, y) = HexMetrics.Center(key.Q, key.R, CellSize);
                 if (x < minX) minX = x;
                 if (x > maxX) maxX = x;
                 if (y < minY) minY = y;

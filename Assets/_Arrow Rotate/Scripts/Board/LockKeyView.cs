@@ -101,6 +101,13 @@ namespace ArrowRotate.View
         {
             var go = MeshFactory.NewMeshObject("LockCap", MeshFactory.Hex(radius), color, parent, worldPos);
             go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // XY hex → XZ düzlemine yatır
+            // ⚠ MeshFactory.SetColor sRGB→linear çevirir; bu unlit (Sprites/Default) yolda renk İKİNCİ kez
+            // çevrildiği için koyu tonlar siyaha düşüyordu (0.36 gri → siyah). Rengi HAM bas.
+            var mr = go.GetComponent<MeshRenderer>();
+            var mpb = new MaterialPropertyBlock();
+            mr.GetPropertyBlock(mpb);
+            mpb.SetColor("_Color", color);
+            mr.SetPropertyBlock(mpb);
             return go;
         }
     }
@@ -129,7 +136,7 @@ namespace ArrowRotate.View
             var v = go.AddComponent<LockGroupView>();
             v._s = s;
 
-            var capColor = new Color(0.24f, 0.25f, 0.30f, 1f);
+            var capColor = new Color(0.36f, 0.36f, 0.38f, 1f); // KOYU GRİ (nötr; eskiden mavimsi 0.24/0.25/0.30 → siyaha çalıyordu)
             Vector3 sum = Vector3.zero;
             foreach (var (seg, center) in cells)
             {
@@ -218,22 +225,20 @@ namespace ArrowRotate.View
         private GameObject _icon;
         private float _s;
         private Vector3 _iconBaseScale;
+        private Color _explodeColor = Color.white; // patlama parçacık rengi (grup tonu — koyu taş yerine okunur)
 
-        public static KeyCellView Create(Transform parent, int group, Vector3 worldPosY0, Sprite keySprite,
-                                         float capRadius, float tileTopY, float iconY, float s, Color tint)
+        /// <summary>tileGO = önceden kurulmuş KOYU 3D hexagon puck (board taşları gibi). iconPos = anahtar ikonunun board-yerel konumu.</summary>
+        public static KeyCellView Create(Transform parent, int group, GameObject tileGO, Vector3 iconPos, Sprite keySprite, float s, Color tint)
         {
-            var go = new GameObject($"KeyCell_{group}_{worldPosY0.x:F1}_{worldPosY0.z:F1}");
+            var go = new GameObject($"KeyCell_{group}");
             go.transform.SetParent(parent, false);
             var v = go.AddComponent<KeyCellView>();
             v._s = s;
 
-            var capColor = new Color(0.20f, 0.21f, 0.26f, 1f); // KOYU anahtar hexagonu
-            var capCenter = new Vector3(worldPosY0.x, tileTopY + 0.02f * s, worldPosY0.z);
-            v._cap = LockKeyFx.MakeCap(go.transform, capCenter, capRadius, capColor);
-
-            var iconPos = new Vector3(worldPosY0.x, iconY, worldPosY0.z);
+            if (tileGO != null) { tileGO.transform.SetParent(go.transform, true); v._cap = tileGO; } // gerçek 3D taş (çarpınca patlar)
             v._icon = LockKeyFx.MakeIcon(go.transform, keySprite, iconPos, s * 0.9f, "KeyIcon", tint);
             v._iconBaseScale = v._icon.transform.localScale;
+            v._explodeColor = tint; // parçacıklar grup renginde (koyu taş rengi arka planda kaybolurdu)
             return v;
         }
 
@@ -244,24 +249,36 @@ namespace ArrowRotate.View
 
         private IEnumerator TriggerRoutine(Vector3 lockPos, System.Action onArrive)
         {
-            // 1) BOUNCE: hexagon + ikon hafif yukarı çıkıp scale ile zıplar (OutBack)
-            Vector3 capPos0 = _cap != null ? _cap.transform.localPosition : Vector3.zero;
             Vector3 iconPos0 = _icon != null ? _icon.transform.localPosition : Vector3.zero;
-            Vector3 capScale0 = _cap != null ? _cap.transform.localScale : Vector3.one;
-            float rise = 0.35f * _s;
-            float t = 0f;
-            while (t < 1f)
+
+            // 1) PATLAMA (ANINDA): ok çarptığı an hexagon parçalanır — scale animasyonu YOK, taş hemen yok olur
+            if (_cap != null)
             {
-                t = Mathf.Min(1f, t + Time.deltaTime / 0.28f);
-                float e = Easing.OutBack(t);
-                float up = rise * e;
-                float sc = 1f + 0.35f * Mathf.Sin(e * Mathf.PI); // şişip iner
-                if (_cap != null) { var p = capPos0; p.y += up; _cap.transform.localPosition = p; _cap.transform.localScale = capScale0 * (1f + 0.2f * Mathf.Sin(e * Mathf.PI)); }
-                if (_icon != null) { var p = iconPos0; p.y += up; _icon.transform.localPosition = p; _icon.transform.localScale = _iconBaseScale * sc; }
+                TileView.Explode(_cap.transform.position, _explodeColor, _s);
+                Destroy(_cap);
+                _cap = null;
+            }
+            // 2) POP: anahtar patlamayla havaya fırlar + BELİRGİN scale taşması (OutBack → 1.7×'i aşıp oturur)
+            const float PopScale = 1.7f;
+            float t1 = 0f;
+            Vector3 popTo = iconPos0 + new Vector3(0f, 0.55f * _s, 0f);
+            while (t1 < 1f)
+            {
+                t1 = Mathf.Min(1f, t1 + Time.deltaTime / 0.30f);
+                float e = Easing.OutBack(t1); // 1'i aşar → yaylanma hissi
+                if (_icon != null)
+                {
+                    _icon.transform.localPosition = Vector3.LerpUnclamped(iconPos0, popTo, Mathf.Clamp01(e));
+                    _icon.transform.localScale = _iconBaseScale * Mathf.LerpUnclamped(1f, PopScale, e);
+                }
                 yield return null;
             }
 
-            // 2) UÇUŞ: anahtar ikonu kilide yay çizerek uçar; hexagon (cap) söner
+            // 3) NEFES: büyük halde kısa bir bekleme (pop okunsun)
+            float t15 = 0f;
+            while (t15 < 1f) { t15 = Mathf.Min(1f, t15 + Time.deltaTime / 0.10f); yield return null; }
+
+            // 4) UÇUŞ: kilide yay çizerek gider, büyük ölçekten küçülerek
             Vector3 from = _icon != null ? _icon.transform.localPosition : Vector3.zero;
             float t2 = 0f;
             while (t2 < 1f)
@@ -271,9 +288,8 @@ namespace ArrowRotate.View
                 if (_icon != null)
                 {
                     _icon.transform.localPosition = Vector3.Lerp(from, lockPos, e) + new Vector3(0f, Mathf.Sin(e * Mathf.PI) * 0.7f * _s, 0f);
-                    _icon.transform.localScale = _iconBaseScale * (1f - 0.4f * e);
+                    _icon.transform.localScale = _iconBaseScale * Mathf.Lerp(PopScale, 0.55f, e); // 1.7× → 0.55×
                 }
-                if (_cap != null) _cap.transform.localScale = capScale0 * (1f - e); // hexagon küçülüp kaybolur
                 yield return null;
             }
 

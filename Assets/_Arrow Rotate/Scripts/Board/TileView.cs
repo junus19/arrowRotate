@@ -148,6 +148,10 @@ namespace ArrowRotate.View
             StartCoroutine(VanishRoutine(delay));
         }
 
+        /// <summary>Verilen dünya konumunda parçalanma (patlama) parçacıkları — taşa bağlı olmayan efektler için
+        /// (ör. anahtar hexagonuna ok çarpınca). Renk parçacık rengi; s = hücre ölçeği.</summary>
+        public static void Explode(Vector3 worldPos, Color color, float s) => SpawnDisintegration(worldPos, color, s);
+
         private IEnumerator VanishRoutine(float delay)
         {
             if (delay > 0f) yield return new WaitForSeconds(delay);

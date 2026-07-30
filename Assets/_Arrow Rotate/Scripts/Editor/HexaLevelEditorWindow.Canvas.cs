@@ -38,7 +38,7 @@ namespace ArrowRotate.EditorTools
             }
 
             int radius = Mathf.Max(1, _selected.Radius);
-            ComputeLayout(canvas, radius, out float s, out Vector2 origin);
+            ComputeLayout(canvas, radius, _selected.Keys, out float s, out Vector2 origin);
 
             HandleGridEvents(radius, s, origin);
 
@@ -203,7 +203,7 @@ namespace ArrowRotate.EditorTools
 
         // ── Geometri ──────────────────────────────────────────────────────────
 
-        private static void ComputeLayout(Rect canvas, int radius, out float s, out Vector2 origin)
+        private static void ComputeLayout(Rect canvas, int radius, HexaKeySave[] keys, out float s, out Vector2 origin)
         {
             // bölge bbox'ı (S=1): merkez uçları
             float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
@@ -212,6 +212,12 @@ namespace ArrowRotate.EditorTools
             {
                 if (!HexCoord.InRegion(q, r, radius)) continue;
                 float x = 1.5f * q, y = Sqrt3 * (r + q * 0.5f);
+                minX = Mathf.Min(minX, x); maxX = Mathf.Max(maxX, x);
+                minY = Mathf.Min(minY, y); maxY = Mathf.Max(maxY, y);
+            }
+            if (keys != null) foreach (var k in keys) // uzaktaki anahtar hexagonları da kadraja girsin
+            {
+                float x = 1.5f * k.Q, y = Sqrt3 * (k.R + k.Q * 0.5f);
                 minX = Mathf.Min(minX, x); maxX = Mathf.Max(maxX, x);
                 minY = Mathf.Min(minY, y); maxY = Mathf.Max(maxY, y);
             }

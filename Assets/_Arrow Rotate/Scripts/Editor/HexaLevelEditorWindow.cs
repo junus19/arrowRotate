@@ -71,7 +71,8 @@ namespace ArrowRotate.EditorTools
         private int _fillLayers = 1;   // 1 = düz
         private int _fillNested = 0;   // gömülü ok sayısı (nested = 1 hücre/ok, stacked = yayılan ok)
         private int _fillIce = 0;
-        private int _fillLocked = 0;   // KİLİTLİ ok sayısı (tek grup, anahtar hexagonu ilk okun önüne) — düz levelda
+        private int _fillLocked = 0;      // KİLİTLİ ok sayısı — düz levelda
+        private int _fillLockGroups = 1;  // kaç ayrı kilit grubu (her grubun kendi anahtar hexagonu + rengi)
         private int _fillBuriedStyle = 0; // 0 = İç içe (Nested), 1 = Alt alta (Stacked)
 
         // ── Stil sabitleri ────────────────────────────────────────────────────
