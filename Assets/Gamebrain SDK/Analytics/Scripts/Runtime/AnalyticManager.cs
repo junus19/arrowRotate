@@ -135,7 +135,7 @@ namespace GameBrain.SDK
 
         private void SetProgress(int percentage)
         {
-            _initializationIndicator.SetProgressText(percentage);//($"{percentage}%");
+            _initializationIndicator.SetProgress(percentage);//($"{percentage}%");
         }
 
         public void OnLevelCompleted(int level)

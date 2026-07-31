@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Gamebrain SDK/Analytics/Example/Scenes/Analytics.unity
+    guid: e059e9b3a4ecc48bc877c32e13de1626
+  - enabled: 1
     path: Assets/Gamebrain/Scenes/Boot.unity
     guid: a08fcaae353964649a5ba80dc9c6dc1b
   - enabled: 1
