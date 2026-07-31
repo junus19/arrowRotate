@@ -633,6 +633,7 @@ MonoBehaviour:
   _ring: {fileID: 7549126298565496216}
   _pulseScale: 1.08
   _pulseDuration: 0.8
+  _pulseEase: 4
 --- !u!1001 &553590249017069206
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -644,6 +645,10 @@ PrefabInstance:
     - target: {fileID: 91614222619872492, guid: aa766b25ca7804b5f892b9eba05f6b14, type: 3}
       propertyPath: m_Name
       value: Hard Level Tag
+      objectReference: {fileID: 0}
+    - target: {fileID: 91614222619872492, guid: aa766b25ca7804b5f892b9eba05f6b14, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 766358106358398948, guid: aa766b25ca7804b5f892b9eba05f6b14, type: 3}
       propertyPath: m_Pivot.x
