@@ -19,18 +19,24 @@ namespace GameBrain.Casual
             Debug.Log("On Enter Loose State!");
             EventBus<MainMenuRequestedEvent>.Register(_mainMenuRequestEventBinding);
             _guiService.LevelFailPanel.SetActive(true);
+            _guiService.TopPanel.SetActive(true);
+            _guiService.TopPanel.SetStatusOfTopBarButtons(false, false);
+
         }
 
         private void OnMainMenuRequested()
         {
             _stateMachine.ChangeState(_transitions[0].TargetState);
         }
-        
+
         protected override void OnExit(State nextState)
         {
             EventBus<MainMenuRequestedEvent>.Deregister(_mainMenuRequestEventBinding);
             _levelManager.CurrentLevel.Unload();
             _guiService.LevelFailPanel.gameObject.SetActive(false);
+            //_guiService.TopPanel.SetActive(false);
+
+
             SceneManager.UnloadSceneAsync("Game");
             Debug.Log("On Exit Loose State!");
         }

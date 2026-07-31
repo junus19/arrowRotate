@@ -24,6 +24,9 @@ namespace GameBrain.Casual
             EventBus<MainMenuRequestedEvent>.Register(_mainMenuRequestEventBinding);
             EventBus<NextLevelRequestedEvent>.Register(_nextLevelRequestEventBinding);
             _guiService.LevelCompletePanel.gameObject.SetActive(true);
+            _guiService.TopPanel.SetActive(true);
+            _guiService.TopPanel.SetStatusOfTopBarButtons(false, false);
+
             _levelManager.LevelCompleted(_gameData);
         }
 
@@ -47,6 +50,8 @@ namespace GameBrain.Casual
             SceneManager.UnloadSceneAsync("Game");
             _levelManager.CurrentLevel.Unload();
             _guiService.LevelCompletePanel.gameObject.SetActive(false);
+            //_guiService.TopPanel.SetActive(false);
+
             _mainCamera.gameObject.SetActive(true);
         }
     }

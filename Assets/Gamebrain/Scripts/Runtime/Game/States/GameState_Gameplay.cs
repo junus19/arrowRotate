@@ -113,6 +113,8 @@ namespace GameBrain.Casual
             // _gameplayManager.OnLevelFail -= OnSoftFail;
 
             _guiService.LevelGoalPanel.DisableLevelGoalPanel();
+            _guiService.TopPanel.SetActive(false);
+
             Debug.Log("On Exit Gameplay State!");
         }
 
@@ -130,6 +132,10 @@ namespace GameBrain.Casual
             _guiService.GameplayPanel.SetLevelText(_gameData.GetVisualLevelIndex().ToString());
             _guiService.GameplayPanel.SetActive(true);
             _guiService.GameplayPanel.ShowGameplayItemsCanvasGroupOnStart(false);
+
+            _guiService.TopPanel.SetActive(true);
+            _guiService.TopPanel.SetStatusOfTopBarButtons(false, false);
+
             _levelGoals.Clear();
             List<LevelGoalDataItem> levelGoalDataItems = _levelManager.CurrentLevel.Data.Goals;
 
@@ -193,7 +199,7 @@ namespace GameBrain.Casual
             SetInputLocked(false);
             _analyticManager?.AnalyticsService.SendLevelStartEvent(_gameData.GetAnalyticLevelIndex());
 
-            if(_tutorial != null)
+            if (_tutorial != null)
                 _tutorial.StartShowingTutorialHand();
         }
 
@@ -280,7 +286,7 @@ namespace GameBrain.Casual
             EventBus<InputLockRequestedEvent>.Raise(new InputLockRequestedEvent());
             _revivePanelCoroutine = _coroutineHandler.StartCoroutine(DelayedRevivePanel(1.25f));
         }
-        
+
         private CoroutineHandle _revivePanelCoroutine;
 
         protected virtual IEnumerator DelayedRevivePanel(float delay = 0f)
@@ -377,7 +383,7 @@ namespace GameBrain.Casual
                 _coroutineHandler.StopCoroutine(_levelCompleteCoroutineHandle);
             if (_revivePanelCoroutine != null)
                 _coroutineHandler.StopCoroutine(_revivePanelCoroutine);
-            
+
             _analyticManager?.AnalyticsService.SendCustomEvent("Abondoned:Level_" + _gameData.GetAnalyticLevelIndex());
             _levelManager.CurrentLevel.Unload();
             SceneManager.UnloadSceneAsync("Game");

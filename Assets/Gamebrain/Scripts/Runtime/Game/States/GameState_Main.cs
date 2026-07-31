@@ -27,6 +27,10 @@ namespace GameBrain.Casual
             _guiService.MainPanel.SetActive(true);
             _guiService.MainPanel.GetPanel<HomePanel>().SetLevelText(_gameData.GetVisualLevelIndex());//($"level {_gameData.GetVisualLevelIndex()}");
             _guiService.MainPanel.SetHardLevelTagActive(_levelManager.IsHardLevel(_gameData));
+
+            _guiService.TopPanel.SetActive(true);
+            _guiService.TopPanel.SetStatusOfTopBarButtons(true, true);
+
             EventBus<PlayRequestedEvent>.Register(_playRequestEventBinding);
 
             if(_gameData.GetLevelIndex() < _gameData.InstantStartLevelWithoutMainMenu)
@@ -43,6 +47,8 @@ namespace GameBrain.Casual
         {
             EventBus<PlayRequestedEvent>.Deregister(_playRequestEventBinding);
             _guiService.MainPanel.SetActive(false);
+                        _guiService.TopPanel.SetActive(false);
+
             Debug.Log("On Exit Main State!");
         }
     }

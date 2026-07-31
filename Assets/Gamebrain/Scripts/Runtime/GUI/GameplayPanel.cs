@@ -93,7 +93,7 @@ namespace GameBrain.Casual
             _gameplayItemsCanvasGroup.DOFade(1.0f, .5f).SetDelay(1f);//SetDelay(delay + 2.2f);
         }
 
-        public void SetLevelText(string level) => _levelText.text = "level "+level;//"level\n" + level;
+        public void SetLevelText(string level) => _levelText.text = "Level "+level;//"level\n" + level;
 
         public void SetScore(int currentScore, int totalScore)
         {
