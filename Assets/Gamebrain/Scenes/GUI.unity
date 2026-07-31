@@ -491,6 +491,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: cfeb4fe39da594f3e95f91cd8a37066b, type: 3}
+--- !u!114 &970272012 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 919883797934975672, guid: cfeb4fe39da594f3e95f91cd8a37066b, type: 3}
+  m_PrefabInstance: {fileID: 970272011}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f5aab2b805894f139f71be125060330, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.Casual.TopPanel
 --- !u!1 &1413135242
 GameObject:
   m_ObjectHideFlags: 0
@@ -642,6 +653,7 @@ MonoBehaviour:
   _levelCompletePanel: {fileID: 2141330261}
   _settingsPanel: {fileID: 337180669}
   _levelGoalPanel: {fileID: 4738973013021817622}
+  _topPanel: {fileID: 970272012}
 --- !u!114 &2141330261 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2671311796996913932, guid: af63b5833b419497880bc4069a2e61f4, type: 3}
