@@ -1,6 +1,7 @@
 using UnityEngine;
 using GameBrain.Utils;
 using Casual = GameBrain.Casual;
+using GameBrain.Casual;
 
 namespace GameBrain.Store
 {
@@ -87,12 +88,16 @@ namespace GameBrain.Store
         {
             _failedBinding = new EventBinding<ShopPurchaseFailedEvent>(OnPurchaseFailed);
             EventBus<ShopPurchaseFailedEvent>.Register(_failedBinding);
+            
+            EventBus<OnStoreOpenedEvent>.Raise(new OnStoreOpenedEvent());
+
             if (_messagePopup != null) _messagePopup.gameObject.SetActive(false);
         }
 
         private void OnDisable()
         {
             EventBus<ShopPurchaseFailedEvent>.Deregister(_failedBinding);
+            EventBus<OnStoreClosedEvent>.Raise(new OnStoreClosedEvent());
         }
 
         private void OnPurchaseFailed(ShopPurchaseFailedEvent evt)
