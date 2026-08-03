@@ -8,12 +8,16 @@ namespace GameBrain.Casual
     {
         [SerializeField] private Button _returnToMainMenuButton;
         [SerializeField] private Button _nextLevelButton;
+                [SerializeField] private Button _closeButton;
+
         [SerializeField] private GameObject _levelEndParticle;
 
         private void OnEnable()
         {
             _returnToMainMenuButton?.onClick.AddListener(OnReturnToMainMenuButtonClick);
             _nextLevelButton.onClick.AddListener(OnNextLevelButtonClick);
+                        _closeButton?.onClick.AddListener(OnReturnToMainMenuButtonClick);
+
                         EventBus<FxRequestEvent>.Raise(new FxRequestEvent(EffectType.FireWorks));
 
         }

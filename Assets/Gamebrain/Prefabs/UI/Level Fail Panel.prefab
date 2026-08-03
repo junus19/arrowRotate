@@ -192,6 +192,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameBrain.TowerDefense.LevelFailPanel
   _returnToMainMenuButton: {fileID: 6207440170733625637}
+  _closeButton: {fileID: 4494461366310495564}
 --- !u!1001 &3603123596595497736
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -326,6 +327,17 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 1366163041709204979, guid: 53882a6b41b1f4de682ddb46636dcfa9, type: 3}
   m_PrefabInstance: {fileID: 3603123596595497736}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &4494461366310495564 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 891524842392677956, guid: 53882a6b41b1f4de682ddb46636dcfa9, type: 3}
+  m_PrefabInstance: {fileID: 3603123596595497736}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &6207440170733625637 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7216345640491969069, guid: 53882a6b41b1f4de682ddb46636dcfa9, type: 3}

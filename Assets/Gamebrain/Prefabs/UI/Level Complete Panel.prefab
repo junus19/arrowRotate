@@ -3014,6 +3014,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameBrain.TowerDefense.LevelCompletePanel
   _returnToMainMenuButton: {fileID: 5649319295194843536}
   _nextLevelButton: {fileID: 3492576949645997683}
+  _closeButton: {fileID: 6187101950675467700}
   _levelEndParticle: {fileID: 1839382021631864020}
 --- !u!1 &2627893286006349850
 GameObject:
@@ -8043,3 +8044,14 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 7527838185302984112, guid: 924f89bc7b0c340969e4deaed9dfa5fa, type: 3}
   m_PrefabInstance: {fileID: 2526382575637787571}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &6187101950675467700 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8562050842709151239, guid: 924f89bc7b0c340969e4deaed9dfa5fa, type: 3}
+  m_PrefabInstance: {fileID: 2526382575637787571}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
