@@ -1,5 +1,6 @@
 using EC.Core.Common;
 using GameBrain.Casual;
+using GameBrain.Store;
 using GameBrain.Utils;
 using UnityEngine;
 
@@ -48,7 +49,7 @@ namespace ArrowRotate.Integration
 
         private void OnHexaLevelWon(HexaLevelWonEvent e)
         {
-            _currencyManager.AddCoin(_coinRewardPerLevel);
+            _currencyManager.Deposit(CurrencyType.Coin, _coinRewardPerLevel);
         }
 
         protected override void OnDestroy()

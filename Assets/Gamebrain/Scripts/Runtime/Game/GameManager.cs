@@ -3,6 +3,7 @@ using UnityEngine;
 using GameBrain.SDK;
 using EC.Core.Common;
 using System.Collections;
+using GameBrain.Store;
 using UnityEngine.SceneManagement;
 
 namespace GameBrain.Casual
@@ -27,6 +28,7 @@ namespace GameBrain.Casual
         protected AnalyticManager _analyticManager;
         protected BoardObjectFactory _boardObjectFactory;
         protected BoardObjectProvider _boardObjectProvider;
+        protected StoreInstaller _storeInstaller;
 
         [Header("Data")]
         [SerializeField] protected GameData _gameData;
@@ -65,12 +67,15 @@ namespace GameBrain.Casual
             _currencyManager.Init();
             _boardObjectFactory = new BoardObjectFactory(_boardObjectsDataHolder.BoardObjectInfos);
             _boardObjectProvider = new BoardObjectProvider(_boardObjectFactory);
+            _storeInstaller = FindAnyObjectByType<StoreInstaller>(FindObjectsInactive.Include);
+            _storeInstaller.Init(_currencyManager);
 
             // GUI
             _guiService.SettingsPanel.InitPanel(_settingsData.GetHapticStatus(), _settingsData.GetAudioFxStatus());
             _guiService.GameplayPanel.InitSettingButtons(_settingsData.GetHapticStatus(), _settingsData.GetAudioFxStatus());
             _guiService.GameplayPanel.OnInject(new[] { _boosterManager });
             _guiService.GameplayPanel.SetBoosters(_gameData.GetLevelIndex());
+            _guiService.TopPanel.OnInject(new []{_currencyManager});
 
             // States!
             GameStateContext context = new GameStateContext(_stateMachine, _gameData, _gameConfig, _guiService, _levelManager, _analyticManager, _gameMetaSystem, _mainCamera);

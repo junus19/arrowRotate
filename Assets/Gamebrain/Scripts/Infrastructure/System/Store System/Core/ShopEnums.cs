@@ -3,9 +3,9 @@ namespace GameBrain.Store
     /// <summary>Currency an item is priced in. Add a value here only when a new payment kind exists.</summary>
     public enum CurrencyType
     {
-        Coin,
-        Gem,
-        RealMoney
+        RealMoney = 0,
+        Coin = 1,
+        Gem = 2,
     }
 
     /// <summary>

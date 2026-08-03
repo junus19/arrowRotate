@@ -1,4 +1,5 @@
 using UnityEngine;
+using GameBrain.Casual;
 using System.Collections.Generic;
 
 namespace GameBrain.Store
@@ -15,6 +16,9 @@ namespace GameBrain.Store
     public sealed class StoreInstaller : MonoBehaviour
     {
         [SerializeField] private ShopCatalogDefinition _catalog;
+        [SerializeField] private GameData _gameData;
+        [SerializeField] private BoosterGameData _boosterGameData;
+        [SerializeField] private bool _autoInitialize = false;
 
         [Header("Demo wallet (in-memory)")]
         [SerializeField] private int _startCoins = 50;
@@ -30,6 +34,12 @@ namespace GameBrain.Store
 
         private void Awake()
         {
+            if (_autoInitialize)
+                Init(null);
+        }
+
+        public void Init(IWallet wallet)
+        {
             if (_catalog == null)
             {
                 Debug.LogError("[Store] StoreInstaller has no catalog assigned.");
@@ -42,17 +52,11 @@ namespace GameBrain.Store
             IIapService iap = _useRealIap ? CreateUgsIap(logger) : (IIapService)new StubIapService();
 
             _service = new ShopServiceBuilder(catalog)
-                .WithWallet(new InMemoryWallet(_startCoins, _startGems))
-                .WithLogger(logger)
+                .WithWallet(wallet ?? new InMemoryWallet(_startCoins, _startGems))
+                .WithBoosters(_boosterGameData)
                 .WithIap(iap)
+                .WithLogger(logger)
                 .Build();
-
-            // --- Production: swap the in-memory wallet for the game's currency authority ---
-            // _service = new ShopServiceBuilder(catalog)
-            //     .WithWallet(new CurrencyManagerWallet(currencyManager, gameData))
-            //     .WithBoosters(boosterGameData)
-            //     .WithIap(iap)
-            //     .Build();
         }
 
         // Builds a UGS IAP service from the catalog's RealMoney products (id + consumable flag).

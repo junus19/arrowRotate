@@ -1,8 +1,9 @@
+using GameBrain.Store;
 using GameBrain.Utils;
 
 namespace GameBrain.Casual
 {
-    public class CurrencyManager
+    public class CurrencyManager : IWallet
     {
         private readonly GameData _gameData;
 
@@ -16,30 +17,43 @@ namespace GameBrain.Casual
             OnCurrencyUpdated();
         }
 
-        public void AddCoin(int amount)
-        {
-            _gameData.AddCoin(amount);
-            OnCurrencyUpdated();
-        }
-
-        public void DebitCoin(int amount)
-        {
-            if (CanSpendCoin(amount))
-            {
-                _gameData.DebitCoin(amount);
-                OnCurrencyUpdated();
-            }
-        }
-
-        public bool CanSpendCoin(int amount)
-        {
-            return _gameData.Data.Coin >= amount;
-        }
-
         private void OnCurrencyUpdated()
         {
             int coin = _gameData.GetCoinAmount();
             EventBus<CurrencyUpdatedEvent>.Raise(new CurrencyUpdatedEvent(coin));
+        }
+
+        public int GetBalance(CurrencyType currency)
+        {
+            return currency == CurrencyType.Coin ? _gameData.GetCoinAmount() : 0;
+        }
+
+        public bool CanAfford(CurrencyType currency, int amount)
+        {
+            if (currency == CurrencyType.Coin)
+                return _gameData.Data.Coin >= amount;
+            return false;
+        }
+
+        public bool TrySpend(CurrencyType currencyType, int amount)
+        {
+            if (!CanAfford(currencyType, amount)) return false;
+            if (currencyType == CurrencyType.Coin)
+            {
+                _gameData.DebitCoin(amount);
+                OnCurrencyUpdated();
+                return true;
+            }
+            return false;
+        }
+
+        public void Deposit(CurrencyType currencyType, int amount)
+        {
+            if (currencyType == CurrencyType.Coin)
+            {
+                _gameData.AddCoin(amount);
+                OnCurrencyUpdated();
+            }
         }
     }
 }

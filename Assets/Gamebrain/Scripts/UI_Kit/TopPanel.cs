@@ -1,7 +1,9 @@
+using System;
+using GameBrain.Store;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using GameBrain.Utils;
-using TMPro;
 
 namespace GameBrain.Casual
 {
@@ -10,32 +12,43 @@ namespace GameBrain.Casual
         [SerializeField] private Button _settingsButton;
         [SerializeField] private Button _addCoinButton;
         [SerializeField] private TextMeshProUGUI coinText;
+        private CurrencyManager _currencyManager;
 
         protected EventBinding<OnStoreOpenedEvent> _onStoreOpenedEvent;
         protected EventBinding<OnStoreClosedEvent> _onStoreClosedEvent;
+        protected EventBinding<CurrencyUpdatedEvent> _onCurrencyUpdatedEvent;
 
         protected override void Awake()
         {
             base.Awake();
-                _onStoreOpenedEvent = new EventBinding<OnStoreOpenedEvent>(OnStoreOpened);
+            _onStoreOpenedEvent = new EventBinding<OnStoreOpenedEvent>(OnStoreOpened);
             _onStoreClosedEvent = new EventBinding<OnStoreClosedEvent>(OnStoreClosed);
+            _onCurrencyUpdatedEvent = new EventBinding<CurrencyUpdatedEvent>(OnCurrencyUpdated);
         }
-
+        
         private void OnEnable()
         {
             _settingsButton.onClick.AddListener(OnSettingsButton);
-        
-
             EventBus<OnStoreOpenedEvent>.Register(_onStoreOpenedEvent);
             EventBus<OnStoreClosedEvent>.Register(_onStoreClosedEvent);
+            EventBus<CurrencyUpdatedEvent>.Register(_onCurrencyUpdatedEvent);
+            if (_currencyManager != null)
+                coinText.text = _currencyManager.GetBalance(CurrencyType.Coin).ToString();
         }
 
         private void OnDisable()
         {
             _settingsButton.onClick.RemoveListener(OnSettingsButton);
-                        EventBus<OnStoreOpenedEvent>.Deregister(_onStoreOpenedEvent);
+            EventBus<OnStoreOpenedEvent>.Deregister(_onStoreOpenedEvent);
             EventBus<OnStoreClosedEvent>.Deregister(_onStoreClosedEvent);
+            EventBus<CurrencyUpdatedEvent>.Deregister(_onCurrencyUpdatedEvent);
+        }
 
+        public override void OnInject(object[] args)
+        {
+            base.OnInject(args);
+            _currencyManager = (CurrencyManager)args[0];
+            coinText.text = _currencyManager.GetBalance(CurrencyType.Coin).ToString();
         }
 
         private void OnSettingsButton()
@@ -63,8 +76,11 @@ namespace GameBrain.Casual
         private void OnStoreClosed(OnStoreClosedEvent eventInfo)
         {
             SetStatusOfTopBarButtons(true, true);
-
         }
 
+        private void OnCurrencyUpdated(CurrencyUpdatedEvent eventInfo)
+        {
+            coinText.text = eventInfo.CoinAmount.ToString();
+        }
     }
 }
