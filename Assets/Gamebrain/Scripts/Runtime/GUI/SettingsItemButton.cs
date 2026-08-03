@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Events;
 
 namespace GameBrain.Casual
 {
@@ -9,11 +10,13 @@ namespace GameBrain.Casual
         [SerializeField] Image buttonIcon;
         [SerializeField] Sprite activeIcon;
         [SerializeField] Sprite deactiveIcon;
+        [SerializeField] GameObject deactiveObject;
 
         [SerializeField] Color disabledColor;
 
-        public void Init()
+        public void Init(UnityAction action)
         {
+            button.onClick.AddListener(action);
         }
 
         private void SetStatus(bool status)
@@ -24,6 +27,8 @@ namespace GameBrain.Casual
                     buttonIcon.sprite = activeIcon;
                 else
                     buttonIcon.color = Color.white;
+
+                deactiveObject.SetActive(true);
             }
             else
             {
@@ -31,6 +36,9 @@ namespace GameBrain.Casual
                     buttonIcon.sprite = deactiveIcon;
                 else
                     buttonIcon.color = disabledColor;
+
+                deactiveObject.SetActive(false);
+
             }
         }
     }

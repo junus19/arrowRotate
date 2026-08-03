@@ -119,8 +119,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameBrain.TowerDefence.SettingsPanel
   _closeButton: {fileID: 6048293482869952106}
-  _hapticSwitch: {fileID: 7129869044600536946}
-  _soundSwitch: {fileID: 7179001194099978869}
+  _hapticsItemButton: {fileID: 1852925147237324187}
+  _soundSoundItemButton: {fileID: 4395854968915322052}
+  _RestorePurchaseButton: {fileID: 4892303433484324321}
 --- !u!1 &145141559272999354
 GameObject:
   m_ObjectHideFlags: 0
@@ -1879,6 +1880,10 @@ PrefabInstance:
       propertyPath: m_Sprite
       value: 
       objectReference: {fileID: 21300000, guid: f6de2a7823f2e4282b6a118ee77c977e, type: 3}
+    - target: {fileID: 1639532194861898615, guid: d014b13a9c8b84a629ff9062357df30b, type: 3}
+      propertyPath: settingType
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 3567559482029898440, guid: d014b13a9c8b84a629ff9062357df30b, type: 3}
       propertyPath: m_Name
       value: HapticButton
@@ -1972,6 +1977,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d014b13a9c8b84a629ff9062357df30b, type: 3}
+--- !u!114 &1852925147237324187 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1639532194861898615, guid: d014b13a9c8b84a629ff9062357df30b, type: 3}
+  m_PrefabInstance: {fileID: 1114113428159942380}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e01c81bec76e147f1a931ebf9431f03a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.Casual.FloatingSettingButton
 --- !u!224 &7577828200631091413 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 7376890537044512313, guid: d014b13a9c8b84a629ff9062357df30b, type: 3}
@@ -2448,6 +2464,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d014b13a9c8b84a629ff9062357df30b, type: 3}
+--- !u!114 &4395854968915322052 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1639532194861898615, guid: d014b13a9c8b84a629ff9062357df30b, type: 3}
+  m_PrefabInstance: {fileID: 3153081683735625651}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e01c81bec76e147f1a931ebf9431f03a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.Casual.FloatingSettingButton
 --- !u!224 &5592914169790771594 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 7376890537044512313, guid: d014b13a9c8b84a629ff9062357df30b, type: 3}
@@ -2773,6 +2800,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a253d747c94d341a19c1c66eb2165672, type: 3}
+--- !u!114 &4892303433484324321 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1832394134890174665, guid: a253d747c94d341a19c1c66eb2165672, type: 3}
+  m_PrefabInstance: {fileID: 6523759607765177640}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!224 &7070414932389083733 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 4077486263077810045, guid: a253d747c94d341a19c1c66eb2165672, type: 3}
@@ -2804,7 +2842,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4077486263077810045, guid: a253d747c94d341a19c1c66eb2165672, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4077486263077810045, guid: a253d747c94d341a19c1c66eb2165672, type: 3}
       propertyPath: m_AnchorMin.x
@@ -2812,7 +2850,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4077486263077810045, guid: a253d747c94d341a19c1c66eb2165672, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4077486263077810045, guid: a253d747c94d341a19c1c66eb2165672, type: 3}
       propertyPath: m_SizeDelta.x
@@ -2852,11 +2890,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4077486263077810045, guid: a253d747c94d341a19c1c66eb2165672, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0
+      value: 592.55
       objectReference: {fileID: 0}
     - target: {fileID: 4077486263077810045, guid: a253d747c94d341a19c1c66eb2165672, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0
+      value: -719
       objectReference: {fileID: 0}
     - target: {fileID: 4077486263077810045, guid: a253d747c94d341a19c1c66eb2165672, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -2873,6 +2911,10 @@ PrefabInstance:
     - target: {fileID: 4323825437173488847, guid: a253d747c94d341a19c1c66eb2165672, type: 3}
       propertyPath: m_Name
       value: Support
+      objectReference: {fileID: 0}
+    - target: {fileID: 4323825437173488847, guid: a253d747c94d341a19c1c66eb2165672, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
