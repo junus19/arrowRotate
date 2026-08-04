@@ -3273,9 +3273,8 @@ GameObject:
   - component: {fileID: 4615097241252190400}
   - component: {fileID: 2443442221889937213}
   - component: {fileID: 3635898291689681979}
-  - component: {fileID: 7683014968543159525}
   m_Layer: 5
-  m_Name: Main Panel
+  m_Name: Shop Panel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -8277,20 +8276,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4005977785835358528}
   m_CullTransparentMesh: 1
---- !u!114 &7683014968543159525
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2650189465530982984}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 09ffa96a4d1f4ba583323681a616c5f1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GameBrain.TowerDefense.MainMenuPanel
-  _contentContainer: {fileID: 0}
-  _hardLevelTag: {fileID: 0}
 --- !u!224 &8755514260078450778
 RectTransform:
   m_ObjectHideFlags: 0
