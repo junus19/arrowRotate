@@ -504,6 +504,7 @@ MonoBehaviour:
   _reviveButton: {fileID: 1768037747895217678}
   _closeButton: {fileID: 891524842392677956}
   _canvasGroup: {fileID: 3140763073044902658}
+  _priceText: {fileID: 1271285732396140040}
 --- !u!224 &4139520610297207226 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 5834321280622594854, guid: c79e699fbebc04350a2ec66cf4fe1cf4, type: 3}

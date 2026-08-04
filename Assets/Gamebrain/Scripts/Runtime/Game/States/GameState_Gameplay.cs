@@ -6,6 +6,7 @@ using EC.Core.Common;
 using GameBrain.Utils;
 using System.Collections;
 using System.Collections.Generic;
+using GameBrain.Store;
 using UnityEngine.SceneManagement;
 
 namespace GameBrain.Casual
@@ -39,6 +40,7 @@ namespace GameBrain.Casual
         protected readonly EventBinding<BoosterActionStartedEvent> _boosterActionStartedEventBinding;
         protected readonly EventBinding<BoosterActionEndedEvent> _boosterActionEndedEventBinding;
         protected readonly BoosterManager _boosterManager;
+        protected readonly CurrencyManager _currencyManager;
 
         // Input
         protected readonly EventBinding<InputLockRequestedEvent> _inputLockRequestedEventBinding;
@@ -47,7 +49,7 @@ namespace GameBrain.Casual
         // Analytic
         protected readonly AnalyticManager _analyticManager;
 
-        public GameState_Gameplay(GameStateContext context, BoosterManager boosterManager, BoardObjectProvider boardObjectProvider) : base(context)
+        public GameState_Gameplay(GameStateContext context, BoosterManager boosterManager, BoardObjectProvider boardObjectProvider, CurrencyManager currencyManager) : base(context)
         {
             _gameMetaSystem = context.GameMetaSystem;
             _mainCamera = context.MainCamera;
@@ -55,6 +57,7 @@ namespace GameBrain.Casual
             _coroutineHandler = new CoroutineHandler();
             _boosterManager = boosterManager;
             _boardObjectProvider = boardObjectProvider;
+            _currencyManager = currencyManager;
             // Event Bindings!
             _restartRequestedEventBinding = new EventBinding<RestartRequestedEvent>(OnRestartRequested);
             _mainMenuRequestedEventBinding = new EventBinding<MainMenuRequestedEvent>(OnMainMenuRequested);
@@ -298,8 +301,18 @@ namespace GameBrain.Casual
 
         private void OnReviveRequested()
         {
-            _analyticManager?.AnalyticsService.SendAdClickEvent("Revive_rv", "applovin_max");
-            _analyticManager?.ADService.ShowRewardedAd("Revive_Rewarded", OnRevive);
+            if (_currencyManager.CanAfford(CurrencyType.Coin, _gameData.RevivePrice))
+            {
+                bool successful = _currencyManager.TrySpend(CurrencyType.Coin, _gameData.RevivePrice);
+                OnRevive();
+            }
+            else
+            {
+                _guiService.ShopPanel.SetActive(true);
+                // open shop!
+            }
+            // _analyticManager?.AnalyticsService.SendAdClickEvent("Revive_rv", "applovin_max");
+            // _analyticManager?.ADService.ShowRewardedAd("Revive_Rewarded", OnRevive);
         }
 
         protected virtual void OnRevive()

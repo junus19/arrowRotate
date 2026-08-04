@@ -17,8 +17,8 @@ namespace ArrowRotate.Integration
         private HexaGameplayManager _gameplayManager;
         private TapController _tapController;
 
-        public HexaGameState_Gameplay(GameStateContext context, BoosterManager boosterManager)
-            : base(context, boosterManager, null)
+        public HexaGameState_Gameplay(GameStateContext context, BoosterManager boosterManager, CurrencyManager currencyManager)
+            : base(context, boosterManager, null, currencyManager)
         {
         }
 

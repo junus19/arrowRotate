@@ -14,17 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameBrain.Casual.GameData
   FileName: Game Data.json
   Data:
-    Level: 0
-    RealLevel: 0
+    Level: 9
+    RealLevel: 9
     SelectedRandomLevel: -1
     LastCompletedRandomLevel: -1
     hexInBank: 0
     currentObjectIndex: 0
     collectedHexInObject: 0
     IsOnboardingComplete: 0
-    Coin: 0
+    Coin: 125
     StartCoin: 0
   InstantStartLevelWithoutMainMenu: 3
   RandomLevelLoopStartIndex: 0
   interstatialShowLevel: 0
   reviewRequestLevel: 0
+  RevivePrice: 500
