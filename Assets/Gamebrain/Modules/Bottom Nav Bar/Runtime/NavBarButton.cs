@@ -287,6 +287,11 @@ namespace GameBrain.Casual
             if (_bar != null) _bar.Select(this);
         }
 
+        public bool IsUnlocked()
+        {
+            return !IsLocked;
+        }
+        
         private string LockedMessage
         {
             get

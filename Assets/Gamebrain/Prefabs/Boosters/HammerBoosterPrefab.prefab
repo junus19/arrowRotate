@@ -52,7 +52,7 @@ MonoBehaviour:
   gameplayCamera: {fileID: 0}
   layerMask:
     serializedVersion: 2
-    m_Bits: 128
+    m_Bits: 0
   hammerParent: {fileID: 8718494242408459197}
   hammerAnimParent: {fileID: 5605443650223523005}
   hammerHitEffectObject: {fileID: 835500989234687423}

@@ -105,6 +105,14 @@ namespace GameBrain.Casual
             return true;
         }
 
+        public bool TrySelect(int index)
+        {
+            NavBarButton button = GetButton(index);
+            if (!button.IsUnlocked()) return false;
+            Select(index);
+            return true;
+        }
+
         public void Select(NavBarButton button)
         {
             Initialize();

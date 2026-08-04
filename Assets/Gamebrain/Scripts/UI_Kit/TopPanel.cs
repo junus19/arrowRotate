@@ -24,6 +24,8 @@ namespace GameBrain.Casual
             _onStoreOpenedEvent = new EventBinding<OnStoreOpenedEvent>(OnStoreOpened);
             _onStoreClosedEvent = new EventBinding<OnStoreClosedEvent>(OnStoreClosed);
             _onCurrencyUpdatedEvent = new EventBinding<CurrencyUpdatedEvent>(OnCurrencyUpdated);
+
+            _addCoinButton.onClick.AddListener(OnAddCoinButton);
         }
         
         private void OnEnable()
@@ -60,6 +62,8 @@ namespace GameBrain.Casual
         private void OnAddCoinButton()
         {
             Debug.Log("Open Store");
+
+            FindFirstObjectByType<NavBar>().TrySelect(0);
         }
 
         public void SetStatusOfTopBarButtons(bool isAddCoinButtonAvailable, bool isSettingButtonAvailable)
