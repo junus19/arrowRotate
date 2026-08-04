@@ -1,3 +1,4 @@
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using DG.Tweening;
@@ -55,6 +56,7 @@ namespace GameBrain.Casual
         {
             base.OnInject(args);
             _boosterManager = args[0] as BoosterManager;
+            _revivePopUp.OnInject(new object[] { args.First(arg => arg is GameData) });
         }
 
         private void OnEnable()

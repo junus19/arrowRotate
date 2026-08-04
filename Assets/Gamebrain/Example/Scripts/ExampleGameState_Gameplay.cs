@@ -9,7 +9,7 @@ namespace GameBrain.Casual.Example
         private ExampleTrigger _successTrigger;
         private ExampleTrigger _failTrigger;
 
-        public ExampleGameState_Gameplay(GameStateContext context, BoosterManager boosterManager) : base(context, boosterManager, null)
+        public ExampleGameState_Gameplay(GameStateContext context, BoosterManager boosterManager, CurrencyManager currencyManager) : base(context, boosterManager, null, currencyManager)
         {
         }
 

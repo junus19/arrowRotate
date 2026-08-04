@@ -9,7 +9,7 @@ namespace GameBrain.Casual.Example
         {
             base.OnInitializationCompleted(context);
             
-            _inGameState = new ExampleGameState_Gameplay(context, _boosterManager);
+            _inGameState = new ExampleGameState_Gameplay(context, _boosterManager, _currencyManager);
             
             _mainState.RemoveAllTransitions();
             _inGameState.RemoveAllTransitions();

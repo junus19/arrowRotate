@@ -26,7 +26,7 @@ namespace ArrowRotate.Integration
             _wonBinding = new EventBinding<HexaLevelWonEvent>(OnHexaLevelWon);
             EventBus<HexaLevelWonEvent>.Register(_wonBinding);
 
-            _inGameState = new HexaGameState_Gameplay(context, _boosterManager);
+            _inGameState = new HexaGameState_Gameplay(context, _boosterManager, _currencyManager);
 
             _mainState.RemoveAllTransitions();
             _inGameState.RemoveAllTransitions();

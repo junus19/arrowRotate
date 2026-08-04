@@ -19,7 +19,6 @@ namespace GameBrain.Casual
         public bool IsOnboardingComplete = false;
 
         public int Coin;
-
         public int StartCoin;
         //public bool minOne = false;
     }
@@ -31,6 +30,7 @@ namespace GameBrain.Casual
         public int RandomLevelLoopStartIndex;
         public int interstatialShowLevel;
         public int reviewRequestLevel;
+        public int RevivePrice;
 
         public int GetLevelIndex()
         {

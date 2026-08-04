@@ -2,6 +2,7 @@ using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using GameBrain.Utils;
+using TMPro;
 using UnityEngine.EventSystems;
 
 namespace GameBrain.Casual
@@ -11,6 +12,8 @@ namespace GameBrain.Casual
         [SerializeField] private Button _reviveButton;
         [SerializeField] private Button _closeButton;
         [SerializeField] private CanvasGroup _canvasGroup;
+        [SerializeField] private TMP_Text _priceText;
+        private GameData _gameData;
 
         public void SetActive(bool active) => gameObject.SetActive(active);
         
@@ -18,6 +21,7 @@ namespace GameBrain.Casual
         {
             _reviveButton.onClick.AddListener(OnReviveButtonClicked);
             _closeButton.onClick.AddListener(OnCloseButtonClicked);
+            _priceText.text = _gameData.RevivePrice.ToString();
         }
 
         private void OnDisable()
@@ -26,6 +30,11 @@ namespace GameBrain.Casual
             _closeButton.onClick.RemoveListener(OnCloseButtonClicked);
         }
 
+        public void OnInject(object[] args)
+        {
+            _gameData = args[0] as GameData;
+        }
+        
         private void OnReviveButtonClicked()
         {
             EventBus<ReviveRequestedEvent>.Raise(new ReviveRequestedEvent());

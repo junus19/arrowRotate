@@ -1,3 +1,4 @@
+using GameBrain.Store;
 using UnityEngine;
 
 namespace GameBrain.Casual
@@ -12,6 +13,7 @@ namespace GameBrain.Casual
         [SerializeField] private UIPanel _settingsPanel;
         [SerializeField] private UIPanel _levelGoalPanel;
         [SerializeField] private UIPanel _topPanel;
+        [SerializeField] private UIPanel _shopPanel;
 
 
         public MainMenuPanel MainPanel => _mainPanel as MainMenuPanel;
@@ -21,6 +23,7 @@ namespace GameBrain.Casual
         public SettingsPanel SettingsPanel => _settingsPanel as SettingsPanel;
         public LevelGoalPanel LevelGoalPanel => _levelGoalPanel as LevelGoalPanel;
         public TopPanel TopPanel => _topPanel as TopPanel;
+        public StorePanel ShopPanel => _shopPanel as StorePanel;
 
 
         public void DisableAllPanels()
@@ -31,6 +34,7 @@ namespace GameBrain.Casual
             _levelFailPanel.SetActive(false);
             _settingsPanel.SetActive(false);
             _topPanel.SetActive(false);
+            _shopPanel.SetActive(false);
         }
     }
 }
