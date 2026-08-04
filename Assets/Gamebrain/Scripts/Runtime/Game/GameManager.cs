@@ -61,9 +61,9 @@ namespace GameBrain.Casual
             _settings = new Settings(_settingsData);
             _feedbackManager = new FeedbackManager(_feedbackData, _settingsData);
             _feedbackManager.Init();
-            _boosterManager = new BoosterManager(_boosterDataBase, _boosterSaveData, _analyticManager?.ADService);
-            _boosterManager.Init();
             _currencyManager = new CurrencyManager(_gameData);
+            _boosterManager = new BoosterManager(_boosterDataBase, _boosterSaveData, _analyticManager?.ADService, _currencyManager);
+            _boosterManager.Init();
             _currencyManager.Init();
             _boardObjectFactory = new BoardObjectFactory(_boardObjectsDataHolder.BoardObjectInfos);
             _boardObjectProvider = new BoardObjectProvider(_boardObjectFactory);

@@ -16,6 +16,8 @@ namespace GameBrain.Casual
     {
         [SerializeField] BoosterType boosterType;
         public BoosterType BoosterType => boosterType;
+        [SerializeField] private int _price;
+        public int Price => _price;
 
         [SerializeField] Sprite icon;
         public Sprite Icon => icon;

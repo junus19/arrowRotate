@@ -21,10 +21,12 @@ namespace GameBrain.Casual
         [SerializeField] GameObject rewardedLoadingObject;
 
         [SerializeField] Button useButton;
+        [SerializeField] Button useWithCoinButton;
         [SerializeField] Button lockedButton;
         [SerializeField] Button rewardedButton;
         private BoosterManager _boosterManager;
-        
+
+        [SerializeField] TextMeshProUGUI priceText;
         private EventBinding<BoosterCountUpdateEvent> _boosterCountUpdatedEventBinding; // Todo: implement!
         private EventBinding<BoosterActiveStatusEvent> _boosterActiveStatusEventBinding;
 
@@ -39,6 +41,8 @@ namespace GameBrain.Casual
             EventBus<BoosterActiveStatusEvent>.Register(_boosterActiveStatusEventBinding);
 
             boosterUnlcokLvlText.text = "Lvl " + boosterManager.GetBoosterVisualUnlockLevel(boosterItemData.BoosterType);
+            priceText.text = boosterItemData.Price.ToString();
+
             if (isActive)
             {
                 //UpdateBoosterCount(boosterCount);
@@ -60,6 +64,8 @@ namespace GameBrain.Casual
             EventBus<BoosterCountUpdateEvent>.Register(_boosterCountUpdatedEventBinding);
 
             useButton.onClick.AddListener(OnUseButton);
+            useWithCoinButton.onClick.AddListener(OnUseWithCoin);
+
             // lockedButton.onClick.AddListener(OnLockedButton);
             rewardedButton.onClick.AddListener(OnRewardedButton);
             rewardedLoadingObject.SetActive(false);
@@ -69,6 +75,8 @@ namespace GameBrain.Casual
         {
             EventBus<BoosterCountUpdateEvent>.Deregister(_boosterCountUpdatedEventBinding);
             useButton.onClick.RemoveListener(OnUseButton);
+            useWithCoinButton.onClick.RemoveListener(OnUseWithCoin);
+
             // lockedButton.onClick.RemoveListener(OnLockedButton);
             rewardedButton.onClick.RemoveListener(OnRewardedButton);
         }
@@ -94,7 +102,7 @@ namespace GameBrain.Casual
 
         private void UpdateBoosterCount(int count)
         {
-            if(count > 0)
+            if (count > 0)
             {
                 boosterCountText.text = count.ToString();
                 if (!boosterCountTxtObject.activeSelf)
@@ -119,12 +127,17 @@ namespace GameBrain.Casual
             _boosterManager.TryUseBooster(boosterItemData.BoosterType);
         }
 
+        private void OnUseWithCoin()
+        {
+            _boosterManager.TryUseBoosterWithCoin(boosterItemData.BoosterType);
+        }
+
         private void OnRewardedButton()
         {
             EventBus<FxRequestEvent>.Raise(new FxRequestEvent(EffectType.Button));
             rewardedObject.SetActive(false);
             rewardedLoadingObject.SetActive(true);
-            _boosterManager.OnBoosterRewardedRequested(boosterItemData.BoosterType, onFailure:OnRewardedFailed);
+            _boosterManager.OnBoosterRewardedRequested(boosterItemData.BoosterType, onFailure: OnRewardedFailed);
         }
 
         private void OnRewardedFailed()
@@ -137,16 +150,16 @@ namespace GameBrain.Casual
         {
 
         }
-        
+
         private void OnBoosterCountUpdated(BoosterCountUpdateEvent eventInfo)
         {
-            if(eventInfo.BoosterType == boosterItemData.BoosterType)
+            if (eventInfo.BoosterType == boosterItemData.BoosterType)
                 UpdateBoosterCount(_boosterManager.GetBoosterCount(boosterItemData.BoosterType));
         }
 
         private void OnBoosterActiveStatusEvent(BoosterActiveStatusEvent eventInfo)
         {
-            if(eventInfo.BoosterType == boosterItemData.BoosterType && eventInfo.IsActive)
+            if (eventInfo.BoosterType == boosterItemData.BoosterType && eventInfo.IsActive)
             {
                 ActivateBooster(eventInfo.BoosterCount);
                 //Unlock();eventInfo.

@@ -10,16 +10,18 @@ namespace GameBrain.Casual
         private readonly BoosterData boosterData;
         private readonly BoosterGameData boosterSaveData;
         private readonly AdService _adService;
+        public readonly CurrencyManager _currencyManager;
         private List<BaseBooster> boosters;
 
         public BoosterData BoosterData => boosterData;
 
-        public BoosterManager(BoosterData boosterData, BoosterGameData boosterSaveData, AdService adService)
+        public BoosterManager(BoosterData boosterData, BoosterGameData boosterSaveData, AdService adService, CurrencyManager currencyManager)
         {
             this.boosterData = boosterData;
             this.boosterSaveData = boosterSaveData;
             boosters = new List<BaseBooster>();
             _adService = adService;
+            _currencyManager = currencyManager;
         }
 
         public void Init()
@@ -46,6 +48,20 @@ namespace GameBrain.Casual
             return boosterSaveData.GetBoosterCount(boosterType) > 0;
         }
 
+        public bool CanUseBoosterWithCoin(BoosterType boosterType, out int price)
+        {
+            var targetBooster = boosterData.BoosterDatas.Find(x=> x.BoosterType == boosterType);
+            price = 0;
+
+            if(targetBooster == null)
+                return false;
+            else
+            {
+                price = targetBooster.Price;
+                return _currencyManager.CanAfford(Store.CurrencyType.Coin ,targetBooster.Price);
+            }
+        }
+
         public void UpdateActiveStatusOfBoosters(int level)
         {
             foreach (var booster in boosters)
@@ -67,6 +83,18 @@ namespace GameBrain.Casual
             {
                 EventBus<FxRequestEvent>.Raise(new FxRequestEvent(EffectType.Button));
                 EventBus<BoosterRequestedEvent>.Raise(new BoosterRequestedEvent(boosterType));
+            }
+        }
+
+        public void TryUseBoosterWithCoin(BoosterType boosterType)
+        {
+            int price;
+
+            if(CanUseBoosterWithCoin(boosterType, out price))
+            {
+                _currencyManager.Deposit(Store.CurrencyType.Coin, price);
+                AddBooster(boosterType, 1);
+                TryUseBooster(boosterType);
             }
         }
 
