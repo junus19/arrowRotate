@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Linq;
 using EC.Core.Common;
+using GameBrain.Store;
 using GameBrain.Utils;
 using UnityEngine.SceneManagement;
 
@@ -11,12 +12,14 @@ namespace GameBrain.Casual
         private readonly EventBinding<MainMenuRequestedEvent> _mainMenuRequestEventBinding;
         private readonly EventBinding<NextLevelRequestedEvent> _nextLevelRequestEventBinding;
         private readonly Camera _mainCamera;
+        protected readonly CurrencyManager _currencyManager; 
 
-        public GameState_Win(GameStateContext context) : base(context)
+        public GameState_Win(GameStateContext context, CurrencyManager currencyManager) : base(context)
         {
             _mainCamera = context.MainCamera;
             _mainMenuRequestEventBinding = new EventBinding<MainMenuRequestedEvent>(OnMainMenuRequested);
             _nextLevelRequestEventBinding = new EventBinding<NextLevelRequestedEvent>(OnNextLevelRequested);
+            _currencyManager = currencyManager;
         }
 
         protected override void OnEnter(State previousState)
@@ -33,13 +36,17 @@ namespace GameBrain.Casual
         private void OnMainMenuRequested()
         {
             if (_gameData.GetLevelIndex() > 3)
+            {
+                _currencyManager.Deposit(CurrencyType.Coin, _gameData.LevelCompleteReward);
                 _stateMachine.ChangeState(_transitions.First(state => state.TargetState is GameState_Main).TargetState);
+            }
             else
                 OnNextLevelRequested();
         }
 
         private void OnNextLevelRequested()
         {
+            _currencyManager.Deposit(CurrencyType.Coin, _gameData.LevelCompleteReward);
             _stateMachine.ChangeState(_transitions.First(state => state.TargetState is GameState_Gameplay).TargetState);
         }
 

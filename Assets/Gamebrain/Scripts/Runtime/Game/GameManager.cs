@@ -75,14 +75,15 @@ namespace GameBrain.Casual
             _guiService.GameplayPanel.InitSettingButtons(_settingsData.GetHapticStatus(), _settingsData.GetAudioFxStatus());
             _guiService.GameplayPanel.OnInject(new object[] { _boosterManager, _gameData });
             _guiService.GameplayPanel.SetBoosters(_gameData.GetLevelIndex());
-            _guiService.TopPanel.OnInject(new []{_currencyManager});
+            _guiService.TopPanel.OnInject(new object[]{_currencyManager});
+            _guiService.LevelCompletePanel.OnInject(new object[]{_gameData});
 
             // States!
             GameStateContext context = new GameStateContext(_stateMachine, _gameData, _gameConfig, _guiService, _levelManager, _analyticManager, _gameMetaSystem, _mainCamera);
             _mainState = new GameState_Main(context);
             _inGameState = new GameState_Gameplay(context, _boosterManager, _boardObjectProvider, _currencyManager);
             _looseState = new GameState_Loose(context);
-            _winState = new GameState_Win(context);
+            _winState = new GameState_Win(context, _currencyManager);
             _restartState = new GameState_Restart(context);
 
             // State Transitions!

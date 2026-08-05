@@ -30,7 +30,8 @@ namespace GameBrain.Casual
         public int RandomLevelLoopStartIndex;
         public int interstatialShowLevel;
         public int reviewRequestLevel;
-        public int RevivePrice;
+        public int RevivePrice = 200;
+        public int LevelCompleteReward = 200;
 
         public int GetLevelIndex()
         {

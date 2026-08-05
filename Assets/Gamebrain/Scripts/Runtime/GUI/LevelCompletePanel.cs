@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using GameBrain.Utils;
+using TMPro;
 
 namespace GameBrain.Casual
 {
@@ -8,18 +9,24 @@ namespace GameBrain.Casual
     {
         [SerializeField] private Button _returnToMainMenuButton;
         [SerializeField] private Button _nextLevelButton;
-                [SerializeField] private Button _closeButton;
-
+        [SerializeField] private Button _closeButton;
+        [SerializeField] private TMP_Text _rewardText;
         [SerializeField] private GameObject _levelEndParticle;
+        private GameData _gameData;
+
+        public override void OnInject(object[] args)
+        {
+            base.OnInject(args);
+            _gameData = args[0] as GameData;
+        }
 
         private void OnEnable()
         {
             _returnToMainMenuButton?.onClick.AddListener(OnReturnToMainMenuButtonClick);
             _nextLevelButton.onClick.AddListener(OnNextLevelButtonClick);
-                        _closeButton?.onClick.AddListener(OnReturnToMainMenuButtonClick);
-
-                        EventBus<FxRequestEvent>.Raise(new FxRequestEvent(EffectType.FireWorks));
-
+            _closeButton?.onClick.AddListener(OnReturnToMainMenuButtonClick);
+            EventBus<FxRequestEvent>.Raise(new FxRequestEvent(EffectType.FireWorks));
+            _rewardText.text = _gameData.LevelCompleteReward.ToString();
         }
 
         private void OnDisable()
