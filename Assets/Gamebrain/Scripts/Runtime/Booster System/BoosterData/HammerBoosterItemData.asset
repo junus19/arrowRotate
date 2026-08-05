@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: HammerBoosterItemData
   m_EditorClassIdentifier: Assembly-CSharp::GameBrain.BoosterItemData
   boosterType: 1
+  _price: 808
   icon: {fileID: -236935989, guid: 658df338772d64c258c0401f955373ec, type: 3}
   iconDisabled: {fileID: -2110546160, guid: 658df338772d64c258c0401f955373ec, type: 3}
-  boosterPrefab: {fileID: 3075071074501045275, guid: 98a2ddd1834ea47ea81e595a21ad3eca,
-    type: 3}
+  boosterPrefab: {fileID: 3075071074501045275, guid: 98a2ddd1834ea47ea81e595a21ad3eca, type: 3}
   header: HAMMER
   info: Tap any object to clear
