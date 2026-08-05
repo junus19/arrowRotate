@@ -83,7 +83,7 @@ namespace GameBrain.Casual
             _mainState = new GameState_Main(context);
             _inGameState = new GameState_Gameplay(context, _boosterManager, _boardObjectProvider, _currencyManager);
             _looseState = new GameState_Loose(context);
-            _winState = new GameState_Win(context, _currencyManager);
+            _winState = new GameState_Win(context, _currencyManager, _analyticManager);
             _restartState = new GameState_Restart(context);
 
             // State Transitions!
