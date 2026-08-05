@@ -304,6 +304,7 @@ namespace GameBrain.Casual
             if (_currencyManager.CanAfford(CurrencyType.Coin, _gameData.RevivePrice))
             {
                 bool successful = _currencyManager.TrySpend(CurrencyType.Coin, _gameData.RevivePrice);
+                _analyticManager?.AnalyticsService.SendResourceEvent(ResourceFlowType.Spend, "Coin", _gameData.RevivePrice, "Coin", "revive");
                 OnRevive();
             }
             else
