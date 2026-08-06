@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4bb983c45f474273aecfb367797f42e2, type: 3}
   m_Name: Hexa Game Config
   m_EditorClassIdentifier: Assembly-CSharp::GameBrain.Casual.GameConfig
-  _gameMode: 0
+  _gameMode: 1
   _levels:
   - {fileID: 11400000, guid: 1df70281bb43b46578449ed115449fef, type: 2}
   - {fileID: 11400000, guid: 3d156c64989644d2ba2e5afd6e2a42d8, type: 2}

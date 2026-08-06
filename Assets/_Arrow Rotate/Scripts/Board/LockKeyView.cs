@@ -8,10 +8,24 @@ namespace ArrowRotate.View
     public class Billboard : MonoBehaviour
     {
         private Camera _cam;
+        private Vector3 _basePos;
+        private float _pull;   // kameraya doğru çekme mesafesi — eğik kamerada 3D kaplamaların örtmesini engeller
+        private bool _hasBase;
+
+        /// <summary>Dünya konumunu sabitler ve her frame kameraya doğru <paramref name="pull"/> kadar çeker (occlusion önler).</summary>
+        public void SetPull(Vector3 worldBasePos, float pull)
+        {
+            _basePos = worldBasePos;
+            _pull = pull;
+            _hasBase = true;
+        }
+
         private void LateUpdate()
         {
             if (_cam == null) _cam = Camera.main;
-            if (_cam != null) transform.rotation = _cam.transform.rotation;
+            if (_cam == null) return;
+            transform.rotation = _cam.transform.rotation;
+            if (_hasBase && _pull > 0f) transform.position = _basePos - _cam.transform.forward * _pull;
         }
     }
 
@@ -32,6 +46,30 @@ namespace ArrowRotate.View
             new Color(1.00f, 0.80f, 0.60f), // açık şeftali
         };
         public static Color GroupColor(int group) => GroupColors[((group % GroupColors.Length) + GroupColors.Length) % GroupColors.Length];
+
+        /// <summary>Ahşap kaplamanın dikey ince ayarı (kullanıcı değeri): taşa daha oturmuş dursun diye 0.4 birim aşağı.</summary>
+        public const float CapYOffset = -0.4f;
+
+        /// <summary>Grup renginin KOYU tonu (hue korunur, doygunluk artar, parlaklık düşer) — ikon arka planı için.</summary>
+        public static Color DarkTone(Color c, float valueScale = 0.42f)
+        {
+            Color.RGBToHSV(c, out float h, out float sat, out float v);
+            return Color.HSVToRGB(h, Mathf.Clamp01(sat * 1.35f), Mathf.Clamp01(v * valueScale));
+        }
+
+        /// <summary>İkonun ARKASINA daire arka plan (ikonun çocuğu → billboard'la birlikte döner, ölçek/animasyonu takip eder).</summary>
+        public static GameObject MakeIconBackdrop(Transform icon, float radius, Color color)
+        {
+            // ikon quad'ı yerelde 1x1; +Z kameradan UZAĞA bakar → küçük +Z ofseti ikonu ÖNDE bırakır
+            var go = MeshFactory.NewMeshObject("IconBg", MeshFactory.Circle(radius), color, icon, new Vector3(0f, 0f, 0.02f));
+            // ⚠ MeshFactory.SetColor sRGB→linear çevirir; bu unlit yolda renk ikinci kez çevrilip koyulaşıyor → HAM bas
+            var mr = go.GetComponent<MeshRenderer>();
+            var mpb = new MaterialPropertyBlock();
+            mr.GetPropertyBlock(mpb);
+            mpb.SetColor("_Color", color);
+            mr.SetPropertyBlock(mpb);
+            return go;
+        }
 
         private static Mesh Quad()
         {
@@ -96,6 +134,66 @@ namespace ArrowRotate.View
             return go;
         }
 
+        /// <summary>
+        /// Kilitli taşın kaplaması olarak PREFAB (WoodHex_Prefab) yerleştirir: taş genişliğine ölçeklenir,
+        /// ALT yüzeyi taşın üstüne oturur. Prefab'da yalnız `WoodLevel1` aktiftir; kırılma parçacıkları
+        /// (`WoodBreakParticleL3`) inaktif bekler, kilit açılınca <see cref="LockGroupView.Open"/> aktifleştirir.
+        /// </summary>
+        public static GameObject MakeCapPrefab(Transform parent, GameObject prefab, Vector3 centerXZ, float tileTopY, float desiredWidth)
+            => MakeCapPrefab(parent, prefab, centerXZ, tileTopY, desiredWidth, CapYOffset);
+
+        /// <summary>
+        /// Kaplama prefab'ını **ÖLÇEK 1** ile, hücre merkezine ve taşın ÜST YÜZEYİNE yerleştirir (otomatik
+        /// bounds-fit YOK). İnce ayar (boyut/yükseklik) prefabın kendi içinden yapılır. Rastgele 60° dönüş uygulanır.
+        /// </summary>
+        public static GameObject MakeCapPrefabUnscaled(Transform parent, GameObject prefab, Vector3 centerXZ, float tileTopY, string name)
+        {
+            var go = Object.Instantiate(prefab, parent);
+            go.name = name;
+            go.transform.localScale = Vector3.one;                                        // ÖLÇEK 1 (kullanıcı kararı)
+            go.transform.localRotation = Quaternion.Euler(0f, 60f * Random.Range(0, 6), 0f); // hexagon simetrisi → hizalama bozulmaz
+            go.transform.localPosition = new Vector3(centerXZ.x, tileTopY, centerXZ.z);
+            return go;
+        }
+
+        /// <summary>Kaplama prefab'ı, dikey ofset parametreli (buz/ahşap farklı pivotlara sahip olabilir).</summary>
+        public static GameObject MakeCapPrefab(Transform parent, GameObject prefab, Vector3 centerXZ, float tileTopY, float desiredWidth, float yOffset)
+        {
+            var go = Object.Instantiate(prefab, parent);
+            go.name = "LockCap";
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.identity; // ⚠ ölçüm DÖNDÜRÜLMEMİŞ halde yapılır (aşağıda gerekçe)
+            go.transform.localScale = Vector3.one;
+
+            // ölçü: AKTİF mesh'lerin dünya bounds'u → parent-yerel
+            var rends = go.GetComponentsInChildren<MeshRenderer>(false);
+            if (rends.Length == 0) { go.transform.localPosition = new Vector3(centerXZ.x, tileTopY + yOffset, centerXZ.z); return go; }
+            var wb = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) wb.Encapsulate(rends[i].bounds);
+            Vector3 lmin = parent.InverseTransformPoint(wb.min);
+            Vector3 lmax = parent.InverseTransformPoint(wb.max);
+            Vector3 lc = (lmin + lmax) * 0.5f;
+
+            // ⚠ Ölçek DÖNDÜRÜLMEMİŞ ölçüden hesaplanır → TÜM kapaklar AYNI ölçeği alır.
+            // (mr.bounds dünya-AABB'si; mesh tam düzgün altıgen değil (2.45 × 2.22) → döndürülmüş halde
+            //  ölçülürse AABB büyüyüp ölçek küçülüyordu: bir kapak doğru, diğerleri daha küçük çıkıyordu.)
+            float w = Mathf.Max(lmax.x - lmin.x, lmax.z - lmin.z);
+            float s = w > 1e-4f ? desiredWidth / w : 1f;
+            go.transform.localScale = Vector3.one * s;
+
+            // RASTGELE 60° katı dönüş — hexagon 6-kat simetrik olduğu için yine TAM oturur, deseni farklılaşır
+            var rot = Quaternion.Euler(0f, 60f * Random.Range(0, 6), 0f);
+            go.transform.localRotation = rot;
+
+            // yatayda hücre merkezine hizala (merkez ofseti dönüşle birlikte döner), dikeyde alt yüzey taşın üstüne
+            Vector3 rc = rot * new Vector3(lc.x, 0f, lc.z);
+            go.transform.localPosition = new Vector3(
+                centerXZ.x - rc.x * s,
+                tileTopY - lmin.y * s - 0.04f * desiredWidth + yOffset, // lmin.y, Y-dönüşünden ETKİLENMEZ
+                centerXZ.z - rc.z * s);
+            return go;
+        }
+
         /// <summary>Kilitli taşın üstünü kapatan yatay (XZ) hexagon lid.</summary>
         public static GameObject MakeCap(Transform parent, Vector3 worldPos, float radius, Color color)
         {
@@ -121,6 +219,7 @@ namespace ArrowRotate.View
     {
         private readonly List<GameObject> _caps = new List<GameObject>();
         private readonly List<SegmentView> _segments = new List<SegmentView>();
+        private bool _prefabCaps; // true = WoodHex_Prefab kaplaması (kırılırken WoodBreakParticleL3 açılır)
         private GameObject _lockIcon;
         private Vector3 _lockPos;
         private float _s;
@@ -128,20 +227,27 @@ namespace ArrowRotate.View
 
         public Vector3 LockPos => _lockPos;
 
+        /// <param name="capPrefab">Kaplama prefab'ı (WoodHex_Prefab). null ise düz koyu gri hex lid'e düşer.</param>
+        /// <param name="capTopY">Taşın üst yüzeyi (prefab bu yüksekliğe oturur).</param>
+        /// <param name="capWidth">Kaplamanın hedef genişliği (taş genişliği).</param>
         public static LockGroupView Create(Transform parent, int group, List<(SegmentView seg, Vector3 capCenter)> cells,
-                                           Sprite lockSprite, float capRadius, float iconY, float s, Color tint)
+                                           Sprite lockSprite, float capRadius, float iconY, float s, Color tint,
+                                           GameObject capPrefab, float capTopY, float capWidth)
         {
             var go = new GameObject($"LockGroup_{group}");
             go.transform.SetParent(parent, false);
             var v = go.AddComponent<LockGroupView>();
             v._s = s;
 
-            var capColor = new Color(0.36f, 0.36f, 0.38f, 1f); // KOYU GRİ (nötr; eskiden mavimsi 0.24/0.25/0.30 → siyaha çalıyordu)
+            var capColor = new Color(0.36f, 0.36f, 0.38f, 1f); // KOYU GRİ (yedek lid; prefab yoksa)
+            v._prefabCaps = capPrefab != null;
             Vector3 sum = Vector3.zero;
             foreach (var (seg, center) in cells)
             {
                 if (seg != null) { v._segments.Add(seg); seg.SetVisible(false); } // altındaki ok gizli
-                v._caps.Add(LockKeyFx.MakeCap(go.transform, center, capRadius, capColor));
+                v._caps.Add(v._prefabCaps
+                    ? LockKeyFx.MakeCapPrefab(go.transform, capPrefab, center, capTopY, capWidth)
+                    : LockKeyFx.MakeCap(go.transform, center, capRadius, capColor));
                 sum += center;
             }
             // kilit ikonu: centroid'e EN YAKIN gerçek hexagonun üstünde (hücreler arası boşlukta değil)
@@ -152,8 +258,22 @@ namespace ArrowRotate.View
                 float d = (center.x - centroid.x) * (center.x - centroid.x) + (center.z - centroid.z) * (center.z - centroid.z);
                 if (d < bestD) { bestD = d; best = center; }
             }
-            v._lockPos = new Vector3(best.x, iconY, best.z);
+            // Prefab kaplama düz lid'den YÜKSEK → ikon kaplamanın üstünde kalmalı (yoksa tahtanın içinde gömülür)
+            float iconYFinal = iconY;
+            if (v._prefabCaps)
+            {
+                float top = float.MinValue;
+                foreach (var cap in v._caps)
+                {
+                    if (cap == null) continue;
+                    foreach (var mr in cap.GetComponentsInChildren<MeshRenderer>(true))
+                        top = Mathf.Max(top, parent.InverseTransformPoint(mr.bounds.max).y);
+                }
+                if (top > float.MinValue) iconYFinal = Mathf.Max(iconY, top + 0.28f * s);
+            }
+            v._lockPos = new Vector3(best.x, iconYFinal, best.z);
             v._lockIcon = LockKeyFx.MakeIcon(go.transform, lockSprite, v._lockPos, s * 0.9f, "LockIcon", tint); // grup rengi (açık ton)
+            LockKeyFx.MakeIconBackdrop(v._lockIcon.transform, 0.62f, LockKeyFx.DarkTone(tint));                 // arkasına grup renginin KOYU tonu
             return v;
         }
 
@@ -184,7 +304,53 @@ namespace ArrowRotate.View
         public void Open()
         {
             foreach (var seg in _segments) if (seg != null) seg.SetVisible(true); // oklar artık aktif/görünür
+            if (_prefabCaps) { StartCoroutine(BreakPrefabCapsRoutine()); return; }
             StartCoroutine(OpenRoutine());
+        }
+
+        /// <summary>Prefab kaplama kırılması: her kapağın mesh'i ANINDA gizlenir, içindeki
+        /// `WoodBreakParticleL3` aktifleşir (taştan taşa 0.05s yayılım), ikon pop+söner.</summary>
+        private IEnumerator BreakPrefabCapsRoutine()
+        {
+            if (_lockIcon != null) StartCoroutine(PopFadeIcon());
+            foreach (var cap in _caps)
+            {
+                if (cap == null) continue;
+                var brk = FindDeep(cap.transform, "WoodBreakParticleL3");
+                foreach (var mr in cap.GetComponentsInChildren<MeshRenderer>(true)) mr.enabled = false; // tahta yok olur
+                if (brk != null)
+                {
+                    brk.gameObject.SetActive(true);
+                    foreach (var ps in brk.GetComponentsInChildren<ParticleSystem>(true)) ps.Play();
+                }
+                yield return new WaitForSeconds(0.05f); // taştan taşa yayılım
+            }
+            yield return new WaitForSeconds(1.6f); // parçacıklar sönsün
+            Destroy(gameObject);
+        }
+
+        private IEnumerator PopFadeIcon()
+        {
+            Vector3 s0 = _lockIcon.transform.localScale;
+            float t = 0f;
+            while (t < 1f)
+            {
+                t = Mathf.Min(1f, t + Time.deltaTime / 0.35f);
+                if (_lockIcon != null) _lockIcon.transform.localScale = s0 * (1f + 0.4f * Mathf.Sin(t * Mathf.PI)) * (1f - t);
+                yield return null;
+            }
+            if (_lockIcon != null) _lockIcon.SetActive(false);
+        }
+
+        private static Transform FindDeep(Transform root, string name)
+        {
+            if (root.name == name) return root;
+            for (int i = 0; i < root.childCount; i++)
+            {
+                var r = FindDeep(root.GetChild(i), name);
+                if (r != null) return r;
+            }
+            return null;
         }
 
         private IEnumerator OpenRoutine()

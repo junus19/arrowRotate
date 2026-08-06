@@ -188,6 +188,8 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 27fda25c9de74466599486eea9ecb71c, type: 3}
   IceMaterial3D: {fileID: 2100000, guid: 6b10fbea6ea7e4564b79666dbc1dc1c8, type: 2}
   IceBodyMaterial3D: {fileID: 2100000, guid: a834eba8a880c4f2a82371eb1f200e1e, type: 2}
+  IceCapPrefab: {fileID: 8495292214794725644, guid: 4fc4012dce8004ce4917336949038a9b, type: 3}
+  LockCapPrefab: {fileID: 6337017129938061584, guid: 082e6e03fd43441cb8915106b8669abe, type: 3}
   LockSprite: {fileID: 21300000, guid: dbc655935fab4453b815096f02c98f45, type: 3}
   KeySprite: {fileID: 21300000, guid: 2d21267ab70e243baabdec512129830c, type: 3}
   TileGap: 0

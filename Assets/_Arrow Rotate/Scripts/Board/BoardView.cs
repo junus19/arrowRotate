@@ -44,8 +44,12 @@ namespace ArrowRotate.View
         public Sprite[] TrailSprites;
         [Tooltip("Buz mekaniği (XZ 3D): üst buz katmanı materyali (Ice_Mat) — UV'li hexagon plane üstünde.")]
         public Material IceMaterial3D;
-        [Tooltip("Buz mekaniği (XZ 3D): buz GÖVDESİ materyali (Ice_Body) — taşı saran hexagon kütle.")]
+        [Tooltip("Buz mekaniği (XZ 3D): buz GÖVDESİ materyali (Ice_Body) — taşı saran hexagon kütle (IceCapPrefab yoksa).")]
         public Material IceBodyMaterial3D;
+        [Tooltip("Buz mekaniği (XZ 3D): buzlu taşların KAPLAMA prefab'ı (IceHex_Prefab). Verilirse gövde/plane yerine bu kullanılır.")]
+        public GameObject IceCapPrefab;
+        [Tooltip("Anahtar mekaniği: kilitli taşların KAPLAMA prefab'ı (WoodHex_Prefab). Boşsa düz koyu gri lid çizilir.")]
+        public GameObject LockCapPrefab;
         [Tooltip("Anahtar mekaniği: kilitli grup ikonu (Lock_1).")]
         public Sprite LockSprite;
         [Tooltip("Anahtar mekaniği: anahtar taşıyan okun ikonu (Key_1).")]
@@ -212,7 +216,7 @@ namespace ArrowRotate.View
                 if (arrow.FreezeAt > 0)
                 {
                     if (!xz) _ices[arrow.ArrowId] = IceView.Create(transform, level, arrow, CellSize);
-                    else if (IceMaterial3D != null) BuildIce3D(level, arrow); // XZ: Ice_Mat'li buz blokları
+                    else if (IceCapPrefab != null || IceMaterial3D != null) BuildIce3D(level, arrow); // XZ: prefab kaplama ya da Ice_Mat blokları
                 }
             }
 
@@ -221,8 +225,10 @@ namespace ArrowRotate.View
             {
                 float iconY = TileTopY + 0.35f * CellSize;      // ikonlar yüzeyin biraz üstünde yüzsün
                 float capRadius = Mathf.Clamp(1f - TileGap, 0.2f, 2f) * CellSize * 0.92f;
+                float capWidth = 2f * HexMesh3D.bounds.extents.x * CellSize * Mathf.Clamp(1f - TileGap, 0.2f, 2f);
                 foreach (var kv in lockCells)
-                    _lockGroups[kv.Key] = LockGroupView.Create(transform, kv.Key, kv.Value, LockSprite, capRadius, iconY, CellSize, LockKeyFx.GroupColor(kv.Key));
+                    _lockGroups[kv.Key] = LockGroupView.Create(transform, kv.Key, kv.Value, LockSprite, capRadius, iconY, CellSize,
+                        LockKeyFx.GroupColor(kv.Key), LockCapPrefab, TileTopY, capWidth);
                 float keyFootprint = Mathf.Clamp(1f - TileGap, 0.2f, 2f);
                 var keyTileColor = new Color(0.20f, 0.21f, 0.26f, 1f); // KOYU anahtar taşı
                 foreach (var key in level.Keys) // bağımsız anahtar hexagonları (ok değil) — gerçek 3D puck taş üstünde
@@ -262,10 +268,12 @@ namespace ArrowRotate.View
             float bodyYScale = HexMesh3D.bounds.max.y > 1e-4f ? bodyTopY / (HexMesh3D.bounds.max.y * CellSize) : TileThicknessY;
             var bodyScale = new Vector3(CellSize * tileFoot * 1.05f, CellSize * bodyYScale, CellSize * tileFoot * 1.05f);
 
+            float iceCapWidth = 2f * HexMesh3D.bounds.extents.x * CellSize * tileFoot;
             _ices3D[arrow.ArrowId] = IceView3D.Create(transform, arrow.ArrowId, centers, CellSize, arrow.FreezeAt,
                 MeshFactory.HexPlaneXZ(), IceMaterial3D, planeScale, iceY,
                 HexMesh3D, IceBodyMaterial3D, bodyScale, 0f,
-                iceY + 0.30f * CellSize);
+                iceY + 0.30f * CellSize,
+                IceCapPrefab, TileTopY, iceCapWidth);
         }
 
         /// <summary>
