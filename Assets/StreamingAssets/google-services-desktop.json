@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "371274362600",
+    "project_id": "hexa-arrows-f16ee",
+    "storage_bucket": "hexa-arrows-f16ee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:371274362600:android:370491a25eb94beb60a35d",
+        "android_client_info": {
+          "package_name": "com.gamebrain.hexaarrows"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBC9Al14MwN4EFClXMAGFBuXTDZ9fqu6N0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
