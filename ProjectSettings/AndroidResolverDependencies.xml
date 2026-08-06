@@ -3,6 +3,8 @@
     <package>com.adjust.sdk:adjust-android:5.6.1</package>
     <package>com.android.installreferrer:installreferrer:2.2</package>
     <package>com.applovin:applovin-sdk:13.6.3</package>
+    <package>com.google.android.gms:play-services-appset:16.0.2</package>
+    <package>com.google.android.instantapps:instantapps:1.1.0</package>
   </packages>
   <files />
   <settings>
