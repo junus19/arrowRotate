@@ -42,6 +42,10 @@ namespace ArrowRotate.View
         public Material ArrowMaterial3D;
         [Tooltip("Uçuş particle izi sprite'ları — ok çıkarken arkadan random spawn edilir (Circle/Star/Square). Boşsa kod-içi daire.")]
         public Sprite[] TrailSprites;
+        [Tooltip("Uçuş izi prefabı — NORMAL (beyaz) ok için (Tail_Particle_White). Verilirse sprite'lı eski iz yerine bu kullanılır.")]
+        public GameObject TailParticleWhite;
+        [Tooltip("Uçuş izi prefabı — COMBO (gökkuşağı) ok için (Tail_Particle_Rainbow).")]
+        public GameObject TailParticleRainbow;
         [Tooltip("Buz mekaniği (XZ 3D): üst buz katmanı materyali (Ice_Mat) — UV'li hexagon plane üstünde.")]
         public Material IceMaterial3D;
         [Tooltip("Buz mekaniği (XZ 3D): buz GÖVDESİ materyali (Ice_Body) — taşı saran hexagon kütle (IceCapPrefab yoksa).")]

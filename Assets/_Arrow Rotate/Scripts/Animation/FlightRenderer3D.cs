@@ -46,6 +46,13 @@ namespace ArrowRotate.View
         private Sprite[] _trailSprites;
         private float _emitTimer, _nextEmitGap;
         private const float TrailGapMin = 0.012f, TrailGapMax = 0.035f; // random emit aralığı (sn) — daha sık
+
+        // ── PREFAB iz (tercih edilen yol, 2026-08-06) ──────────────────────────
+        // Tail_Particle_White / Tail_Particle_Rainbow: World-sim, loop, rateOverTime=60 → OTOMATİK emit eder.
+        // Bu yüzden elle Emit YOK; emitter'ı her frame okun KUYRUĞUNA taşırız, iz kendiliğinden oluşur.
+        private GameObject _tailPrefabWhite, _tailPrefabRainbow;
+        private Transform _tailEmitter;
+        public void SetTailPrefabs(GameObject white, GameObject rainbow) { _tailPrefabWhite = white; _tailPrefabRainbow = rainbow; }
         private const float TrailLateralSpread = 0.3f; // uçuş yönüne DİK random savrulma (±, × S) — hafif serpilme
 
         private static Shader _trailShader;
@@ -93,6 +100,24 @@ namespace ArrowRotate.View
             tex.Apply();
             return tex;
         }
+
+        /// <summary>COMBO gökkuşağı: 256×1 TAM hue taraması (0→1). Hue döngüsel olduğu için wrap dikişsizdir.</summary>
+        private static Texture2D BuildFullRainbow()
+        {
+            const int w = 256;
+            var tex = new Texture2D(w, 1, TextureFormat.RGBA32, false)
+            {
+                name = "ComboRainbow", wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Bilinear,
+            };
+            for (int x = 0; x < w; x++)
+                tex.SetPixel(x, 0, Color.HSVToRGB(x / (float)w, 0.85f, 1f));
+            tex.Apply();
+            return tex;
+        }
+
+        /// <summary>Arka arkaya çıkışta (combo) bu uçuş TAM GÖKKUŞAĞI modunda çizilir. Fly'dan ÖNCE set edilir.</summary>
+        public void SetComboRainbow(bool on) => _comboRainbow = on;
+        private bool _comboRainbow;
 
         public static FlightRenderer3D Create(List<(float x, float y)> pathPts, float s, float extension, float surfaceY, Material mat, Color paletteColor, Sprite[] trailSprites = null)
         {
@@ -226,9 +251,25 @@ namespace ArrowRotate.View
 
         public void Fly(float speed, Action onDone)
         {
-            if (UseColorGradient) EnableRainbow(); // temiz çıkış → palet gradient'i (kapalıysa ok beyaz kalır)
-            _trail = _psList.Count > 0;            // particle izi (bounce bunu açmaz)
-            _nextEmitGap = UnityEngine.Random.Range(TrailGapMin, TrailGapMax);
+            // temiz çıkış → palet gradient'i (kapalıysa ok beyaz kalır) · COMBO ise tam gökkuşağı
+            if (UseColorGradient || _comboRainbow) EnableRainbow();
+
+            // İZ: prefab varsa ONU kullan (sanatçı ayarları) — combo'da Rainbow, normalde White.
+            var tailPrefab = _comboRainbow ? _tailPrefabRainbow : _tailPrefabWhite;
+            if (tailPrefab != null)
+            {
+                var em = Instantiate(tailPrefab, transform);
+                em.name = "TailEmitter_" + tailPrefab.name; // hangi prefab kullanıldığı hiyerarşide görünsün
+                em.transform.localPosition = Vector3.zero;
+                _tailEmitter = em.transform;
+                foreach (var ps in em.GetComponentsInChildren<ParticleSystem>(true)) ps.Play(); // rateOverTime ile otomatik akar
+                _trail = false;                    // prefab otomatik emit ediyor → elle Emit YOK
+            }
+            else
+            {
+                _trail = _psList.Count > 0;        // eski yol: sprite'lı manuel emit (bounce'ta iz yok)
+                _nextEmitGap = UnityEngine.Random.Range(TrailGapMin, TrailGapMax);
+            }
             StartCoroutine(FlyRoutine(speed, onDone));
         }
 
@@ -237,7 +278,7 @@ namespace ArrowRotate.View
         private void EnableRainbow()
         {
             if (FxShader == null) return; // shader yok → beyaz kalır
-            _fxTex = BuildPaletteGradient(_paletteColor);
+            _fxTex = _comboRainbow ? BuildFullRainbow() : BuildPaletteGradient(_paletteColor);
             _fxMat = new Material(FxShader) { name = "ArrowFx (runtime)" };
             _fxMat.SetFloat("_Glow", 1f);
             _fxMat.SetTexture("_GradientTex", _fxTex);
@@ -264,6 +305,20 @@ namespace ArrowRotate.View
         /// <summary>İz sistemlerini Flight3D'den ayırır, emisyonu durdurur, kalan parçacıklar sönünce yok eder.</summary>
         private void DetachTrail()
         {
+            // PREFAB emitter: uçuş bitti → emisyonu durdur, mevcut parçacıklar sönene dek yaşasın
+            if (_tailEmitter != null)
+            {
+                _tailEmitter.SetParent(null, true);
+                float life = 1f;
+                foreach (var ps in _tailEmitter.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                    life = Mathf.Max(life, ps.main.startLifetime.constantMax);
+                }
+                Destroy(_tailEmitter.gameObject, life + 0.3f);
+                _tailEmitter = null;
+            }
+
             foreach (var ps in _psList)
             {
                 if (ps == null) continue;
@@ -275,6 +330,21 @@ namespace ArrowRotate.View
         }
 
         public void Bounce(float hitDist, float duration, Action onDone) => StartCoroutine(BounceRoutine(hitDist, duration, onDone));
+
+        /// <summary>Önü kapalı bekleyen ok için SONSUZ idle: gövde KENDİ YOLU boyunca ileri-geri süzülür
+        /// (blok halinde kaymaz — `SetOffset` yol-takipli olduğu için ok şekli korunur). Durdurmak = objeyi yok et.</summary>
+        public void IdleLoop(float amp, float freq) => StartCoroutine(IdleRoutine(amp, freq));
+
+        private IEnumerator IdleRoutine(float amp, float freq)
+        {
+            float t = 0f;
+            while (true)
+            {
+                t += Time.deltaTime * freq;
+                SetOffset(amp * 0.5f * (1f - Mathf.Cos(t))); // 0..amp arası yumuşak gidiş-geliş
+                yield return null;
+            }
+        }
 
         private IEnumerator BounceRoutine(float hitDist, float duration, Action onDone)
         {
@@ -330,6 +400,13 @@ namespace ArrowRotate.View
                     WriteRainbowUV(_stripMF.sharedMesh, _stripMF.transform);
                 if (_headMF.sharedMesh != null)
                     WriteRainbowUV(_headMF.sharedMesh, _head);
+            }
+
+            // PREFAB iz: emitter'ı okun KUYRUĞUNA taşı (World-sim + rateOverTime → arkada iz bırakır)
+            if (_tailEmitter != null)
+            {
+                var tpp = PointAt(tailL);
+                _tailEmitter.localPosition = new Vector3(tpp.x, 0f, tpp.y);
             }
 
             // particle izi: random aralıkta okun KUYRUĞUNDA (arka uç) RANDOM bir şekil bırak → gövdenin ARKASINDA

@@ -24,6 +24,8 @@ namespace ArrowRotate.Game
         public const float ChainStep = 0.26f;
         public const float WinDelay = 0.5f;
         public const float VanishStartDelay = 0.12f;
+        /// <summary>Bir önceki ÇIKIŞtan bu süre içinde fırlayan ok "arda arda" sayılır → combo (gökkuşağı).</summary>
+        public const float ComboWindow = 1.2f;
 
         public BoardView Board;
 
@@ -46,6 +48,12 @@ namespace ArrowRotate.Game
 
         private HexaLevel _level;
         private readonly Dictionary<int, TraceResult> _pendingExit = new Dictionary<int, TraceResult>();
+        private float _lastExitTime = -99f; // combo penceresi için son çıkış zamanı
+        private int _comboCount;
+        /// <summary>Önü kapalı bekleyen okların idle renderer'ları (gövde kendi yolunda ileri-geri süzülür).</summary>
+        private readonly Dictionary<int, FlightRenderer3D> _waitIdle = new Dictionary<int, FlightRenderer3D>();
+        private const float IdleAmp = 0.22f;  // CellSize oranı — yol boyunca ileri-geri mesafe
+        private const float IdleFreq = 5.0f;  // rad/s
         private bool _timerStarted;
         private float _timerStart;
         private int _tutorialArrowId = -1;
@@ -72,8 +80,11 @@ namespace ArrowRotate.Game
         public void Begin(HexaLevel level)
         {
             StopAllCoroutines();
+            foreach (var kv in _waitIdle) if (kv.Value != null) Destroy(kv.Value.gameObject); // bekleme idle'ları
+            _waitIdle.Clear();
             _level = level;
             _pendingExit.Clear();
+            _lastExitTime = -99f; _comboCount = 0; // combo sıfırla
             MoveCount = 0;
             Won = false;
             _timerStarted = false;
@@ -181,6 +192,7 @@ namespace ArrowRotate.Game
             if (!_pendingExit.TryGetValue(arrowId, out var exit)) return;
 
             var blockers = RayScanner.Blockers(_level, arrowId, exit.HeadCell, exit.ExitDir);
+            StopWaitIdle(arrowId); // yeniden değerlendiriliyor → varsa bekleme animasyonunu durdur
 
             if (blockers.Count > 0)
             {
@@ -192,6 +204,7 @@ namespace ArrowRotate.Game
                 if (arrow.LastBouncedBlocker == nearest)
                 {
                     arrow.State = ArrowState.Waiting; // beklemede kal ki sonraki zincirde yeniden denensin
+                    StartWaitIdle(arrow); // önü kapalı: ileri-geri idle (zorlanma hissi)
                     return;
                 }
 
@@ -244,9 +257,17 @@ namespace ArrowRotate.Game
                     Board.PromoteCellVisual(cellKeys[i], d + 0.2f);
             }
 
+            // COMBO: bir önceki çıkıştan hemen sonra fırlıyorsa (arda arda) — 2.'den itibaren GÖKKUŞAĞI modu
+            _comboCount = (Time.time - _lastExitTime) <= ComboWindow ? _comboCount + 1 : 1;
+            bool comboRainbow = _comboCount >= 2;
+
             if (Board.Is3DXZ)
-                FlightRenderer3D.Create(pts, s, FlightExtension, Board.SurfaceY, Board.ArrowMaterial3D, HexaPalette.ForPalette(arrow.Palette), Board.TrailSprites)
-                    .Fly(FlightSpeed, () => OnFlightDone(arrow, dying));
+            {
+                var fr = FlightRenderer3D.Create(pts, s, FlightExtension, Board.SurfaceY, Board.ArrowMaterial3D, HexaPalette.ForPalette(arrow.Palette), Board.TrailSprites);
+                fr.SetComboRainbow(comboRainbow);
+                fr.SetTailPrefabs(Board.TailParticleWhite, Board.TailParticleRainbow); // combo → Rainbow, normal → White
+                fr.Fly(FlightSpeed, () => OnFlightDone(arrow, dying));
+            }
             else
                 FlightRenderer.Create(pts, s, FlightExtension, BoardView.OverlayZ)
                     .Fly(FlightSpeed, () => OnFlightDone(arrow, dying));
@@ -280,6 +301,7 @@ namespace ArrowRotate.Game
         private void OnFlightDone(Arrow arrow, List<GameObject> dying)
         {
             arrow.State = ArrowState.Done;
+            _lastExitTime = Time.time; // combo penceresi (arda arda çıkış → sonrakiler gökkuşağı)
             foreach (var go in dying) if (go != null) Destroy(go);
             _pendingExit.Remove(arrow.ArrowId);
             ArrowExited?.Invoke(arrow.ArrowId);
@@ -332,6 +354,33 @@ namespace ArrowRotate.Game
             LevelWon?.Invoke();
         }
 
+        // ── bekleme idle'ı (önü kapalı tamamlanmış ok) ─────────────────────────
+        /// <summary>Bekleyen ok: hücre segmentleri gizlenir, gövde uçuş renderer'ıyla KENDİ YOLUNDA ileri-geri
+        /// süzülür (blok halinde kaymaz — ok şekli/dönüşleri korunur, uçuşun aynı yol-takip mantığı).</summary>
+        private void StartWaitIdle(Arrow arrow)
+        {
+            if (!Board.Is3DXZ || arrow == null) return;
+            StopWaitIdle(arrow.ArrowId);
+
+            float s = Board.CellSize;
+            var pts = FlightPathBuilder.Build(_level, arrow.ArrowId, s, FlightTipDist(arrow));
+            foreach (var ck in arrow.Cells) Board.GetSegment(ck)?.SetVisible(false); // gövdeyi renderer çizecek
+
+            var fr = FlightRenderer3D.Create(pts, s, IdleAmp * s + 0.001f, Board.SurfaceY,
+                Board.ArrowMaterial3D, HexaPalette.ForPalette(arrow.Palette));
+            fr.IdleLoop(IdleAmp * s, IdleFreq);
+            _waitIdle[arrow.ArrowId] = fr;
+        }
+
+        private void StopWaitIdle(int arrowId)
+        {
+            if (!_waitIdle.TryGetValue(arrowId, out var fr)) return;
+            _waitIdle.Remove(arrowId);
+            if (fr != null) Destroy(fr.gameObject);
+            if (_level != null && arrowId >= 0 && arrowId < _level.Arrows.Count)
+                foreach (var ck in _level.Arrows[arrowId].Cells) Board.GetSegment(ck)?.SetVisible(true);
+        }
+
         // ── bounce / waiting ───────────────────────────────────────────────────
         private void StartBounce(Arrow arrow, List<(float x, float y)> pts, RayBlocker blocker)
         {
@@ -343,11 +392,14 @@ namespace ArrowRotate.Game
             // bounce sırasında hücre segmentleri gizlenir, overlay gövdeyi oynatır
             foreach (var ck in arrow.Cells) Board.GetSegment(ck)?.SetVisible(false);
 
+            int exitDir = _pendingExit.TryGetValue(arrow.ArrowId, out var ex) ? ex.ExitDir : 0;
             System.Action onBounceDone = () =>
             {
                 foreach (var ck in arrow.Cells) Board.GetSegment(ck)?.SetVisible(true);
                 FadeTiles(arrow, visible: true); // çarpıp geri döndü: taşlar geri açılır
                 ArrowBlocked?.Invoke(arrow.ArrowId);
+                // hâlâ bekliyorsa: önü kapalı, ileri-geri idle'a geç (yol açılınca zincirde tekrar denenir)
+                if (arrow.State == ArrowState.Waiting) StartWaitIdle(arrow);
             };
             if (Board.Is3DXZ)
                 FlightRenderer3D.Create(pts, s, hitDist + 1.2f * s, Board.SurfaceY, Board.ArrowMaterial3D, HexaPalette.ForPalette(arrow.Palette))
