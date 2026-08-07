@@ -167,7 +167,7 @@ PlayerSettings:
   androidMaxAspectRatio: 2.4
   androidMinAspectRatio: 1
   applicationIdentifier:
-    Android: com.gamebrain.arrowrotate
+    Android: com.gamebrain.hexaarrows
     Standalone: com.Unity-Technologies.com.unity.template.urp-blank
     iPhone: com.Unity-Technologies.com.unity.template.urp-blank
   buildNumber:
@@ -830,7 +830,7 @@ PlayerSettings:
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
-    Android: DOTWEEN;MOREMOUNTAINS_NICEVIBRATIONS_INSTALLED;LETAI_TRUESHADOW
+    Android: DOTWEEN;MOREMOUNTAINS_NICEVIBRATIONS_INSTALLED;LETAI_TRUESHADOW;gameanalytics_max_enabled;ADJUST_ENABLED;GAMEANALYTICS_ENABLED;MAX_ENABLED;FACEBOOK_ENABLED;FIREBASE_ENABLED
     EmbeddedLinux: DOTWEEN
     GameCoreScarlett: DOTWEEN
     GameCoreXboxOne: DOTWEEN
@@ -841,12 +841,12 @@ PlayerSettings:
     PS4: DOTWEEN
     PS5: DOTWEEN
     QNX: DOTWEEN
-    Standalone: LETAI_TRUESHADOW;MOREMOUNTAINS_NICEVIBRATIONS_INSTALLED;DOTWEEN
+    Standalone: LETAI_TRUESHADOW;MOREMOUNTAINS_NICEVIBRATIONS_INSTALLED;DOTWEEN;ADJUST_ENABLED;GAMEANALYTICS_ENABLED;MAX_ENABLED;FACEBOOK_ENABLED;FIREBASE_ENABLED
     VisionOS: DOTWEEN
     WebGL: DOTWEEN
     Windows Store Apps: DOTWEEN
     XboxOne: DOTWEEN
-    iPhone: DOTWEEN
+    iPhone: DOTWEEN;gameanalytics_max_enabled;ADJUST_ENABLED;GAMEANALYTICS_ENABLED;MAX_ENABLED;FACEBOOK_ENABLED;FIREBASE_ENABLED
     tvOS: DOTWEEN
   additionalCompilerArguments: {}
   platformArchitecture: {}

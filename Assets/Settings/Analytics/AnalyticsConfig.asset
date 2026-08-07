@@ -12,48 +12,70 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 736edcb4bd1d473eb2c5fa6a9e3f28f7, type: 3}
   m_Name: AnalyticsConfig
   m_EditorClassIdentifier: Assembly-CSharp::GameBrain.SDK.AnalyticsConfig
-  FacebookEnabled: 0
-  FacebookAppName: 
+  FacebookEnabled: 1
+  FacebookAppName: Hexa Arrows
   FacebookAppId: 
   FacebookClientToken: 
-  ApplovinEnabled: 0
+  ApplovinEnabled: 1
   ApplovinSdkKey: 5G2ZhfKdfVwh7-HzvMz-LzwDwddWi_PpFRMy5hamBVSITkGN4DLQBGe6vGdcF1PVTnRZT1JfWmz-UDLZQh-czd
   AdReviewEnabled: 1
   PrivacyFlowEnabled: 1
   PrivacyFlowEnabledInGDPR: 0
   PrivacyTermsURL: https://gamebra.in/hyper/policy/
-  AndroidInterstitialAdUnitId: 
-  AndroidRewardedAdUnitId: 
-  AndroidBannerAdUnitId: 
-  IosInterstitialAdUnitId: 
-  IosRewardedAdUnitId: 
-  IosBannerAdUnitId: 
-  GameAnalyticsEnabled: 0
-  GameAnalyticsAndroidGameKey: 
-  GameAnalyticsAndroidSecretKey: 
-  GameAnalyticsIosGameKey: 
-  GameAnalyticsIosSecretKey: 
+  AndroidInterstitialAdUnitId: d21e65c77af4c9f4
+  AndroidRewardedAdUnitId: a201231f17d7d3bf
+  AndroidBannerAdUnitId: f95bb13419c98c60
+  IosInterstitialAdUnitId: 032420b589749990
+  IosRewardedAdUnitId: 268f9332e795d116
+  IosBannerAdUnitId: 818b22f97983ca8e
+  GameAnalyticsEnabled: 1
+  GameAnalyticsAndroidGameKey: 19ec6c26d45cac79603ff0cc7bd99a71
+  GameAnalyticsAndroidSecretKey: 3ec946e3da1a93a0110db201fe82636aaaaf8dc1
+  GameAnalyticsIosGameKey: 7327a29b713afb1c3e7306d3a994f56f
+  GameAnalyticsIosSecretKey: 9831dd41cc18c9e31c4287f70e68aca273ad9a75
   GameAnalyticsBuild: 0
   GameAnalyticsBuildVersion: 0.1.0
   GameAnalyticsAndroidBuildVersion: 0.1.0
-  AdjustEnabled: 0
-  AdjustAppToken: 
+  AdjustEnabled: 1
+  AdjustAppToken: d84s2yrxkf7k
   AdjustEnvironment: 1
-  AdjustFirstLaunchEventToken: 
-  AdjustTutorialStartEventToken: 
-  AdjustTutorialCompleteEventToken: 
-  AdjustPurchaseEventToken: 
-  AdjustLevelStartEventTokens: []
-  AdjustLevelCompleteEventTokens: []
+  AdjustFirstLaunchEventToken: qlglvu
+  AdjustTutorialStartEventToken: xtpk33
+  AdjustTutorialCompleteEventToken: gg9xzo
+  AdjustPurchaseEventToken: om0d37
+  AdjustLevelStartEventTokens:
+  - Level: 1
+    EventToken: zcygpt
+  AdjustLevelCompleteEventTokens:
+  - Level: 1
+    EventToken: f6dpry
+  - Level: 2
+    EventToken: 5cruyh
+  - Level: 3
+    EventToken: ieatck
+  - Level: 4
+    EventToken: dpwyzc
+  - Level: 5
+    EventToken: 5gfca0
+  - Level: 6
+    EventToken: vmq8jg
+  - Level: 7
+    EventToken: q1uqc7
+  - Level: 8
+    EventToken: otj89q
+  - Level: 9
+    EventToken: wy67p0
+  - Level: 10
+    EventToken: vfhavd
   AdjustLevelFailEventTokens: []
-  FirebaseEnabled: 0
-  FirebaseAndroidConfigPath: 
-  FirebaseIOSConfigPath: 
+  FirebaseEnabled: 1
+  FirebaseAndroidConfigPath: Assets/google-services.json
+  FirebaseIOSConfigPath: Assets/GoogleService-Info.plist
   HammerEnabled: 0
   InternetRequired: 0
   EnableInEditor: 0
   VerboseLogging: 0
-  AutoSave: 0
+  AutoSave: 1
   AdsEnabled: 1
   InterstitialEnabled: 0
   RewardedEnabled: 1
